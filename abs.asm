@@ -26,10 +26,8 @@ tsgs	resw	2
 tsldt	resw	2
 tsio	resd	1
 
-tskbd	resb	10h
-tskb	resd	1
-tske	resd	1
-tsnkb	resd	1
+tskey	resd	1
+tskf	resd	1
 tsnum	resd	1
 tsrun	resd	1
 tstime	resd	1
@@ -45,9 +43,3 @@ tssel	resd	1
 tsnext	resd	1
 tsprev	resd	1
 tsstat	resd	1
-
-
-
-
-
-

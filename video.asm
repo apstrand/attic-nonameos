@@ -33,7 +33,7 @@ vidih:				; Avbrotts hanterare för video funktioner
 	push ds
 	push dword krnlds
 	pop ds
-	cmp bl,[vfuncs]
+	cmp bl,vfuncs
 	jae .l1
 	push ebx
 	and ebx,0ffh
@@ -46,10 +46,15 @@ vidih:				; Avbrotts hanterare för video funktioner
 vidsscr:			; Byt "skärm", eax = screenoffset
 	push ebx
 	push edx
-	mov ebx,[runpcb]
+	mov ebx,pcbs
+.l1	mov edx,[ebx+tsvscr]
+	cmp edx,eax
+	je .l2
+	add ebx,pcblen
+	jmp .l1
+.l2	mov [vidascr],eax
 	mov [actpcb],ebx
 	mov bx,ax
-	mov [vidascr],ax
 	shr bx,1
 	mov dx,3d4h
 	mov al,0ch
@@ -104,13 +109,13 @@ vsetpos:			; ax = RRCC
 	shl ebx,4
 	lea ebx,[ebx*4+ebx]
 	add ebx,eax
-	mov ah,bh
-	mov al,0eh
-	mov edx,3d4h
-	out dx,ax
-	mov ah,bl
-	mov al,0fh
-	out dx,ax
+; 	mov ah,bh
+; 	mov al,0eh
+; 	mov edx,3d4h
+; 	out dx,ax
+; 	mov ah,bl
+; 	mov al,0fh
+; 	out dx,ax
 	shl ebx,1
 	mov [edi+tsvofs],ebx
 	pop edi

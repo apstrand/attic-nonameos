@@ -10,7 +10,12 @@ task1:	task1.asm
 task2:	task2.asm
 	nasm task2.asm
 
-w:	boot os task1 task2
+all: boot os task1 task2
+
+image: all
+	cat boot os task1 task2 > fd0.img
+
+w:	all
 	su -c 'cat boot os task1 task2> /dev/fd0'
 
 d:	os

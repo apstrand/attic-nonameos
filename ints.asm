@@ -52,9 +52,9 @@ irq0:	push eax
 	dec dword [eax+tssleep]
 	jz .la			; Sovit klart?
 .lns	cmp dword [eax+tsstat],2 ; väntar på inmatning
-	jne .lg
-	cmp dword [pcbs+tsnkb],0
-	je .lg
+	jne near .lg
+	cmp dword [pcbs+tskf],1
+	jne .lg	
 .la	mov dword [eax+tscpriv],-10
 	mov dword [eax+tsstat],1
 	mov ebx,[eax+tsnext]	; Lägg in i ready-kön
@@ -185,14 +185,9 @@ irq1:	push ds
 	jmp .l1
 .l3
 	mov ecx,[actpcb]
-	mov ebx,[pcbs+tske]
-	inc ebx
-	and ebx,03fh
-	cmp [pcbs+tskb],ebx
-	je .l1
-	inc dword [pcbs+tsnkb]
-	mov [pcbs+tske],ebx
-	mov [pcbs+tskbd+ebx],al	; Lägg in scankoden i bufferten...
+	and eax,0ffh
+	mov [pcbs+tskey],al
+	mov dword [pcbs+tskf],1
 .l1	mov al,20h
 	out 20h,al		; Färdig!
 	pop ecx

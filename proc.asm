@@ -7,7 +7,10 @@ tssd2	equ	8900h
 pcblen	equ	tssd1		; Längd så PCB
 
 inittssd dd	t0desc
-
+	
+procfunc	dd	sleep,loadtask,runtask
+procfuncs	equ ($-procfunc)/4
+		
 runpcb	dd	0
 
 actpcb	dd	0
@@ -18,9 +21,6 @@ readyl	dd	0
 waitpcbf	dd	0	; Waiting-kön
 waitpcbl	dd	0
 
-procfunc	dd	sleep,loadtask,runtask
-procfuncs	equ ($-procfunc)/4
-	
 [section .bss]
 
 pcbs	times pcblen*10h	resb	1
@@ -32,13 +32,11 @@ procih:				; Avbrottshanterare
 	push ds
 	push dword krnlds
 	pop ds
-	cmp bl,procfuncs
-	jae .l1
 	push ebx
 	and ebx,0ffh
-	call [procfuncs+ebx*4]
+	call [procfunc]
 	pop ebx
-.l1	pop ds
+	pop ds
 	iret
 
 waitkbd:
@@ -54,6 +52,7 @@ waitkbd:
 	pop eax
 	ret	
 
+	
 	;; Söv en process
 	;; Indata:	eax = antas hundradels sekunder som processen ska sova
 	

@@ -92,7 +92,7 @@ initIDT:
 	or byte [idt+43h*8+5],60h
 	mov edx,kbdih			; 44h Tangentbordsrutiner
 	mov [idt+44h*8],dx
-	or byte [idt+43h*8+5],60h
+	or byte [idt+44h*8+5],60h
 	ret
 
 
@@ -103,7 +103,7 @@ init8253:			; Timeravbrott
 	out 40h,al
 	mov al,2eh
 	out 40h,al
- 	in al,21h		; irq 0 och 1 på
+ 	in al,21h		; irq 0 på
  	and al,11111100b
  	out 21h,al
 	ret	

@@ -3,7 +3,7 @@
 	
 [section .data]
 dbeg:	
-t1msg:	db 'Hello World...',0
+t1msg:	db 'Testprogram 1...',0
 trn:	db '-\|/'
 dlen	equ	$-dbeg
 

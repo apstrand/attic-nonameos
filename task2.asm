@@ -3,7 +3,7 @@
 	
 [section .data]
 dbeg:	
-t2msg:	db 'Hello World again...',0	
+t2msg:	db 'Testprogram 2...',0	
 trn:	db '-\|/'
 dlen	equ	$-dbeg
 
@@ -29,16 +29,15 @@ task2:	mov edi,trn
 	int 43h
 	mov ecx,100000h
 	loop $
-	mov eax,300
-	mov bl,9
-;  	int 43h	
 	mov bl,4
 	mov al,8
 	int 43h
 	inc esi
 	and esi,3
 	jmp .l1
-		
+
+	times ($$-$) & 3 db 0
+
 clen	equ	$-cbeg
 
 

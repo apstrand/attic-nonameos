@@ -1,5 +1,6 @@
-[bits 32]
-[inc abs.asm]
+bits 32
+
+%include "abs.asm"
 
 	;;	task struktur:
 	;;	00	text offset
@@ -11,7 +12,7 @@
 	;;	18	stack offset
 	;;	1c	stack längd
 
-[section .data]
+section .data
 		
 gdt     dw 800h			; Global Descriptor Table
 	dd gdt			; Dessa värden laddas från start
@@ -44,8 +45,13 @@ lastsel dd	38h		; Variabel som håller reda på sista
 				; descriptor post
 
 msg1	db	'Running....',0ah,0
+msg2	db	'Laddar process 1...',0ah,0
+msg3	db	'K”r process 1',0ah,0
+msg4	db	'Laddar process 2...',0ah,0
+msg5	db	'K”r process 2',0ah,0ah,0ah,0ah,0
+msg6	db	'Tryck F2 resp. F3 f”r att g† till process 1 resp. 2',0ah,0
 
-
+	
 [section .text]
 	
 start:				; Här startar exekveringen efter att bootkoden
@@ -85,10 +91,7 @@ start:				; Här startar exekveringen efter att bootkoden
 	int 43h			; Skriv ut lite meddelanden på skärmen
 
 
-
-	
-	
- 	mov ecx,1000h
+	mov ecx,1000h
  	call memget
  	mov edi,eax	
  	mov esi,90000h
@@ -98,9 +101,16 @@ start:				; Här startar exekveringen efter att bootkoden
 	call loadtask
 	mov dword [ebx+tsvscr],80*25*2
 	call runtask
-
 	
-   	mov ecx,1000h
+	mov esi,msg2
+	mov bl,5
+	int 43h
+	mov esi,msg3
+	mov bl,5
+	int 43h
+
+
+	mov ecx,1000h
    	call memget
     	mov edi,eax
    	mov esi,90000h+200h
@@ -110,17 +120,19 @@ start:				; Här startar exekveringen efter att bootkoden
    	call loadtask
 	mov dword [ebx+tsvscr],80*25*2*2
    	call runtask
+	
+	mov esi,msg4
+	mov bl,5
+	int 43h
+	mov esi,msg5
+	mov bl,5
+	int 43h
+	mov esi,msg6
+	mov bl,5
+	int 43h
 
-.l1
-	call kbdget
-	mov bl,6
-	int 43h
-	mov bl,4
-	mov al,'-'
-	int 43h
-	jmp .l1
+	
 	jmp $
-
 
 	
 	;; Skapar GDT-poster för processen
@@ -173,15 +185,15 @@ addgdtent:
 
 	
 
-[inc ints.asm]
-[inc init.asm]	
-[inc proc.asm]
-[inc video.asm]
-[inc memory.asm]
-[inc kbd.asm]
+%include "ints.asm"
+%include "init.asm"	
+%include "proc.asm"
+%include "video.asm"
+%include "memory.asm"
+%include "kbd.asm"
 
 
-[section .text]
+section .text
 codeend:
-[section .data]
+section .data
 dataend:	
