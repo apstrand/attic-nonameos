@@ -40,7 +40,7 @@ d3desc	equ	0040f200h
 idtptr	dw	07ffh
 	dd	idt
 
-lastsel dd	30h
+lastsel dd	38h
 
 	
 msg1	db	'Running....',0ah,0
@@ -67,7 +67,6 @@ start:
 	call initpcbs
 	lidt [idtptr]
 	sti
-
 	mov bl,0
 	int 42h
 	mov esi,msg1
@@ -96,13 +95,16 @@ start:
    	rep movsb
 	mov esi,eax
    	call loadtask
-;    	call runtask
+   	call runtask
 
-	mov eax,[pcbs+tssel]
-	mov bl,8
-	int 42h
-	mov eax,[pcbs+tssel+300h]
-	int 42h
+; 	mov ebx,[readyf]
+; 	mov ecx,[ebx+tsnext]
+; 	mov [readyf],ecx
+; 	mov [ecx+tsprev],ecx
+; 	mov [runpcb],ebx
+; 	mov eax,[ebx+tssel]
+; 	mov [gdt+tsw+2],ax
+; 	jmp tsw:0
 	
 	jmp $
 
@@ -145,13 +147,14 @@ addgdtent:				; eax:ebx = descriptor
 	mov [lastsel],edx
 	ret			; returnerar selector i edx
 
-	
-[inc memory.asm]
+
+[inc ints.asm]
+[inc init.asm]	
 [inc proc.asm]
 [inc video.asm]
-[inc ints.asm]
+[inc memory.asm]
 [inc kbd.asm]
-[inc init.asm]
+
 
 [section .text]
 codeend:

@@ -18,9 +18,9 @@ readyl	dd	0
 waitpcbf	dd	0
 waitpcbl	dd	0
 
-[section .bss]
+; [section .bss]
 
-pcbs	times pcblen*10h	resb	0
+pcbs	times pcblen*4	db	0
 
 			
 ; procfunc	dd	sleep
@@ -153,7 +153,7 @@ initpcbs:
 .l1:	mov dword [pcbs+ebx+tsstat],-1
 	add ebx,pcblen
 	cmp ebx,pcblen*10h
-	jbe .l1
+	jb .l1
 	mov eax,[inittssd]
 	ltr ax
 	mov ebx,pcbs

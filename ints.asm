@@ -9,8 +9,8 @@ tmrd	dd	072f075ch
 		
 tmrc	dd	10h
 
-tmrs dd 0
-which dd 0	
+tmrs	dd	0
+which	dd	0
 
 kbdbuf	times 40h db
 kbdbeg	dd	0
@@ -52,13 +52,14 @@ ehfs	db	'FS:  '
 ehgs	db	'GS:  '
 ehss	db	'SS:  '
 	
-	
+dummy	db	'     '	
 
 [section .text]
 	
 irq0:	push eax
 	push ebx
 	push ecx
+	push edx
 	push ds
 	mov eax,krnlds
 	mov ds,ax
@@ -98,7 +99,8 @@ irq0:	push eax
 	je near .l20.1
 	cmp dword [ebx+tscpriv],0
 	jns near .l20.2
-	
+
+.l100
 	mov ecx,[readyf]
 	cmp ecx,[readyl]
 	jne .l4
@@ -107,8 +109,8 @@ irq0:	push eax
 	mov [ebx+tsprev],ebx
 	mov [ebx+tsnext],ebx
 	jmp .l12
-	
-.l4	mov eax,[ebx+tspriv]
+.l4	
+	mov eax,[ebx+tspriv]
 .l5	mov ecx,[ecx+tsnext]
 	cmp ecx,[readyl]
  	je .l6			; Sist
@@ -139,6 +141,7 @@ irq0:	push eax
 	mov al,20h
 	out 20h,al
 	pop ds
+	pop edx
 	pop ecx
 	pop ebx
  	pop eax
@@ -151,6 +154,7 @@ irq0:	push eax
 	mov al,20h
  	out 20h,al
 	pop ds
+	pop edx
 	pop ecx
 	pop ebx
 	pop eax
@@ -379,4 +383,9 @@ ehdword: mov bh,0fh
 	mov [0b8000h+edi],eax
 	add edi,4
 	ret
+
+
+
+
+
 
