@@ -45,9 +45,6 @@ lastsel dd	38h		; Variabel som håller reda på sista
 
 msg1	db	'Running....',0ah,0
 
-	
-msg2	db	'             Kernel    Program 1  Program 2',0ah,'Aktiv tid:',0ah,'Total tid:',0	
-
 
 [section .text]
 	
@@ -87,6 +84,10 @@ start:				; Här startar exekveringen efter att bootkoden
 	mov al,0ah
 	int 43h			; Skriv ut lite meddelanden på skärmen
 
+
+
+	
+	
  	mov ecx,1000h
  	call memget
  	mov edi,eax	
@@ -95,6 +96,7 @@ start:				; Här startar exekveringen efter att bootkoden
  	rep movsb
 	mov esi,eax
 	call loadtask
+	mov dword [ebx+tsvscr],80*25*2
 	call runtask
 
 	
@@ -106,63 +108,18 @@ start:				; Här startar exekveringen efter att bootkoden
    	rep movsb
 	mov esi,eax
    	call loadtask
+	mov dword [ebx+tsvscr],80*25*2*2
    	call runtask
 
-	
-	mov ax,1000h
-	mov bl,1
-	int 43h
-	mov esi,msg2
-	mov bl,5
-	int 43h
-
-
 .l1
-	mov ax,110ch
-	mov bl,1
+	call kbdget
+	mov bl,6
 	int 43h
-	mov eax,[pcbs+tsttime]
-	mov bl,8
+	mov bl,4
+	mov al,'-'
 	int 43h
-
-	mov ax,1118h
-	mov bl,1
-	int 43h
-	mov eax,[pcbs+300h*4+tsttime]
-	mov bl,8
-	int 43h
-	
-	mov ax,1123h
-	mov bl,1
-	int 43h
-	mov eax,[pcbs+300h*5+tsttime]
-	mov bl,8
-	int 43h
-
-	
-	mov ax,120ch
-	mov bl,1
-	int 43h
-	mov eax,[pcbs+tstime]
-	mov bl,8
-	int 43h
-
-	mov ax,1218h
-	mov bl,1
-	int 43h
-	mov eax,[pcbs+300h*4+tstime]
-	mov bl,8
-	int 43h
-	
-	mov ax,1223h
-	mov bl,1
-	int 43h
-	mov eax,[pcbs+300h*5+tstime]
-	mov bl,8
-	int 43h
-
-	
 	jmp .l1
+	jmp $
 
 
 	

@@ -46,27 +46,34 @@ irq0:	push eax
 	mov edx,[eax+tsnext]
 .lw	mov eax,edx
 	mov edx,[eax+tsnext]
-	inc dword [eax+tsttime]	; öka ttime (=total körtid) för alla
-	dec dword [eax+tssleep]	; processer i waiting-kön
-	jnz .ls			; Sovit klart?
-	mov dword [eax+tscpriv],-5
-	mov ebx,[eax+tsnext]	; om ja, lägg då in i ready-kön
+	inc dword [eax+tsttime]	  ; öka ttime (=total körtid) för alla
+	cmp dword [eax+tssleep],0 ; processer i waiting-kön
+	je .lns
+	dec dword [eax+tssleep]
+	jz .la			; Sovit klart?
+.lns	cmp dword [eax+tsstat],2 ; väntar på inmatning
+	jne .lg
+	cmp dword [pcbs+tsnkb],0
+	je .lg
+.la	mov dword [eax+tscpriv],-10
+	mov dword [eax+tsstat],1
+	mov ebx,[eax+tsnext]	; Lägg in i ready-kön
 	mov ecx,[eax+tsprev]
 	mov [ebx+tsprev],ecx
 	mov [ecx+tsnext],ebx
 	cmp dword [readyf],0
-	jne .ls1
+	jne .lg1
 	mov [readyf],eax
 	mov [readyl],eax
 	mov [eax+tsprev],eax
 	mov [eax+tsnext],eax
-	jmp .ls
-.ls1	mov ebx,[readyf]
+	jmp .lg
+.lg1	mov ebx,[readyf]
 	mov [readyf],eax
 	mov [eax+tsprev],eax
 	mov [eax+tsnext],ebx
 	mov [ebx+tsprev],eax
-.ls
+.lg
 	cmp edx,[waitpcbl]
 	jne near .lw
 
@@ -158,6 +165,7 @@ irq1:	push ds
 	mov eax,krnlds
 	mov ds,ax
 	push ebx
+	push ecx
 	in al,60h		; Hämta scankod
 	cmp al,0e0h
 	jne .l2			; Utökad?
@@ -175,15 +183,19 @@ irq1:	push ds
 	pop edx
 	call vidsscr		; F1-F8 skiftar "skärm"
 	jmp .l1
-.l3	mov ebx,[kbdend]
+.l3
+	mov ecx,[actpcb]
+	mov ebx,[pcbs+tske]
 	inc ebx
 	and ebx,03fh
-	cmp [kbdbeg],ebx
+	cmp [pcbs+tskb],ebx
 	je .l1
-	mov [kbdend],ebx
-	mov [kbdbuf+ebx],al	; Lägg in scankoden i bufferten...
+	inc dword [pcbs+tsnkb]
+	mov [pcbs+tske],ebx
+	mov [pcbs+tskbd+ebx],al	; Lägg in scankoden i bufferten...
 .l1	mov al,20h
 	out 20h,al		; Färdig!
+	pop ecx
 	pop ebx
 	pop eax
 	pop ds

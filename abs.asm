@@ -26,7 +26,10 @@ tsgs	resw	2
 tsldt	resw	2
 tsio	resd	1
 
-tsname	resb	20h
+tskbd	resb	10h
+tskb	resd	1
+tske	resd	1
+tsnkb	resd	1
 tsnum	resd	1
 tsrun	resd	1
 tstime	resd	1

@@ -1,9 +1,5 @@
 [section .data]
 
-kbdbuf	times 40h db 0
-kbdbeg	dd	0
-kbdend	dd	0
-	
 
 [section .text]
 
@@ -11,20 +7,23 @@ kbdih:
 	iret
 	
 kbdget:	push ebx		; Väntar på tangentnedslag och returnerar scankoden i al
-.l1:	mov ebx,[kbdbeg]
-	cmp [kbdend],ebx
-	je .l1
+	call waitkbd
 	xor eax,eax
-	inc ebx
-	and ebx,3fh
-	mov [kbdbeg],ebx
-	mov al,[kbdbuf+ebx]
+	mov eax,[pcbs+tskb]
+	inc eax
+	and eax,0fh
+	mov [pcbs+tskb],eax
+	dec dword [pcbs+tsnkb]
+	mov al,[pcbs+tskbd+eax]
 	pop ebx
 	ret
 
-kbdchk:	push ebx		; z = inga scankoder väntar...
-	mov ebx,[kbdend]
-	cmp ebx,[kbdbeg]
+kbdchk:	push eax		; z = inga scankoder väntar...
+	push ebx
+	mov ebx,[runpcb]
+	mov eax,[ebx+tskb]
+	cmp eax,[ebx+tske]
 	pop ebx
+	pop eax
 	ret
 	

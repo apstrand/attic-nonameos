@@ -1,6 +1,7 @@
 
 [section .data]
 
+vidascr	dd	0
 	
 vfunc:	dd vcls,vsetpos,vgetpos,vgetrpos,vputchar,vwstr,vbyte,vword,vdword
 vfuncs	equ	($-vfunc)/4
@@ -45,7 +46,11 @@ vidih:				; Avbrotts hanterare för video funktioner
 vidsscr:			; Byt "skärm", eax = screenoffset
 	push ebx
 	push edx
+	mov ebx,[runpcb]
+	mov [actpcb],ebx
 	mov bx,ax
+	mov [vidascr],ax
+	shr bx,1
 	mov dx,3d4h
 	mov al,0ch
 	mov ah,bh
@@ -56,7 +61,9 @@ vidsscr:			; Byt "skärm", eax = screenoffset
 	pop edx
 	pop ebx
 	ret
+
 	
+		
 vcls:				; Rensa skärmen
 	push eax
 	push ebx

@@ -9,7 +9,9 @@ pcblen	equ	tssd1		; Längd så PCB
 inittssd dd	t0desc
 
 runpcb	dd	0
-	
+
+actpcb	dd	0
+		
 readyf	dd	0		; Pekare till den berömda Ready-kön
 readyl	dd	0
 
@@ -39,6 +41,18 @@ procih:				; Avbrottshanterare
 .l1	pop ds
 	iret
 
+waitkbd:
+	cli
+	push eax
+	push ebx
+	push ecx
+	mov ebx,[runpcb]
+	mov dword [ebx+tsstat],2
+	call movewait
+	pop ecx
+	pop ebx
+	pop eax
+	ret	
 
 	;; Söv en process
 	;; Indata:	eax = antas hundradels sekunder som processen ska sova
@@ -46,8 +60,21 @@ procih:				; Avbrottshanterare
 sleep:	push eax
 	push ebx
 	push ecx
+	mov ebx,[runpcb]
+	mov [ebx+tssleep],eax		; Flytta till waiting kön
+	call movewait
+	pop ecx
+	pop ebx
+	pop eax
+	ret
+
+
+	;; Flyttar aktiv process till waiting kön och hoppar
+	;; vidare till nästa.
+	
+movewait:	
 	cli
-	mov ebx,[runpcb]	; Flytta till waiting kön
+	mov ebx,[runpcb]
 	mov [ebx+tssleep],eax	
 	mov eax,[waitpcbf]
 	mov ecx,[eax+tsnext]
@@ -71,11 +98,7 @@ sleep:	push eax
 	mov [gdt+tsw+2],ax
 	jmp tsw:0	 
 	sti
-	pop ecx
-	pop ebx
-	pop eax
 	ret
-
 	
 
 	;; Förbered en process för körning och lägg den i waiting kön
@@ -156,6 +179,7 @@ initpcbs:
 	push eax
 	push ebx
 	mov ebx,pcbs
+	mov [actpcb],ebx
 	xor eax,eax
 	mov ecx,pcblen*10h/4-4
 .l2	mov [ebx+ecx],eax
@@ -179,23 +203,16 @@ initpcbs:
 	mov dword [ebx+tsnext],ebx
 	mov dword [ebx+tsprev],ebx
 	mov dword [ebx+tsstat],1
-	mov dword [ebx+tsofs],0
-	mov dword [ebx+tsvscr],0
 	mov ebx,pcbs+pcblen
 	mov [waitpcbf],ebx
 	mov dword [ebx+tsnext],pcbs+pcblen*2
-	mov [ebx+tsprev],ebx
+	mov dword [ebx+tsprev],ebx
 	mov dword [ebx+tsstat],0
-	mov dword [ebx+tsrun],0
-	mov dword [ebx+tssleep],-1
 	mov ebx,pcbs+pcblen*2
 	mov [waitpcbl],ebx
 	mov dword [ebx+tsprev],pcbs+pcblen
 	mov dword [ebx+tsnext],ebx
 	mov dword [ebx+tsstat],0
-	mov dword [ebx+tsrun],0
-	mov dword [ebx+tssleep],-1
-	
 	pop ebx
 	pop eax
 	ret
@@ -242,7 +259,7 @@ addtss:
 	bswap ecx
 	mov [gdt+edx+4],ch
 	mov [gdt+edx+7],cl
-	mov [ecx+tssel],edx
+	
 	pop edi
 	pop edx
 	pop ecx
