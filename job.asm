@@ -34,7 +34,7 @@ tstime	resd	1
 tsvofs	resd	1
 tsvscr	resd	1
 tsvpos	resd	1
-
+tsofs	resd	1
 
 
 [section .data]
@@ -43,10 +43,8 @@ tssd1	equ	200h
 tssd2	equ	8900h
 
 inittssd dd	t0desc
-firsttss dd	t0desc
-lasttss	 dd	t0desc
 
-tsksel	times	20h*2	dd	0
+tsksel	times	40h*2	dd	0
 ntask	dd	0
 runtsk  dd	0
 
@@ -65,6 +63,7 @@ tss2	times 200h db 0
 loadtask:			; Returnerar tasknr i eax
 	mov eax,[ntask]
 	inc eax
+ 	call newgdtent
 	call addtss
 	mov [ntask],eax
 	ret
@@ -75,7 +74,6 @@ runtask:			; Tasknr i eax
 	mov dword [eax+tsrun],1
 	pop eax
 	ret
-
 
 
 inittss:
@@ -94,19 +92,22 @@ addtss:				; esi=taskptr
 	push ecx
 	push edx
 	push edi
+	mov edi,ecx
 	mov ecx,eax
-	mov ebx,110000h
-	shl eax,12
-	lea eax,[eax*2+eax]		; tasknr*3*4096
-	add ebx,eax
 	shl ecx,9			; tasknr*200h
+	mov ebx,[esi+0ch]
+	mov dword [ecx+tss+tsofs],esi
+	mov esi,[esi]
 	mov dword [ecx+tss+tseip],esi
 	mov dword [ecx+tss+tsesp],ebx
-	add ebx,10000h
+	mov ebx,10000h
+	add ebx,ecx
 	mov dword [ecx+tss+tsesp0],ebx
 	mov dword [ecx+tss+tseflags],202h
-	mov dword [ecx+tss+tscs],c3d
-	mov dword [ecx+tss+tsds],d3d
+	add edi,3
+	add edx,3
+	mov dword [ecx+tss+tscs],edi
+	mov dword [ecx+tss+tsds],edx
 	mov dword [ecx+tss+tses],d3d
 	mov dword [ecx+tss+tsfs],d3d
 	mov dword [ecx+tss+tsgs],d3d
@@ -119,7 +120,7 @@ addtss:				; esi=taskptr
 	push ecx
 	mov eax,tssd1
 	mov ebx,tssd2
-	call addgdtsel
+	call addgdtent
 	mov [1000h+edx+2],cx
 	bswap ecx
 	mov [1000h+edx+4],ch
@@ -127,7 +128,6 @@ addtss:				; esi=taskptr
 	mov [tsksel+edi*8],edx
 	pop ebx
 	mov [tsksel+edi*8+4],ebx
-	add word [lasttss],8
 	pop edi
 	pop edx
 	pop ecx

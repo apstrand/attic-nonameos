@@ -1,15 +1,21 @@
 [bits 32]
 [include os.inc]
-[org 1000h]
-	
+
 [section .data]
+dbeg:	
 t2msg:	db 'Hello World again...',0	
 trn:	db '-\|/'
-
+dlen	equ	$-dbeg
 	
 [section .text]
-	
-task2:	mov edi,trn
+[org 0h]
+cbeg:
+	dd	task2,clen
+ 	dd	t2msg,dlen
+	dd	0
+	dd	1024
+task2:	
+	mov edi,trn-t2msg
 	mov ax,1200h
 	mov bl,1
 	call vid3:0
@@ -27,4 +33,5 @@ task2:	mov edi,trn
 	inc dl
 	and dl,3
 	jmp .l1
-	
+		
+clen	equ	$-cbeg

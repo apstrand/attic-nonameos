@@ -1,7 +1,20 @@
 [bits 32]
 [inc os.inc]
 [section .data]
-	
+
+	;;	task struktur:
+	;;	00	text offset
+	;;	04	text längd
+	;;	08	data offset
+	;;	0C	data längd
+	;;	10	bss längd
+	;;	14	stack längd
+	;;	.
+	;;	.
+	;;	.
+
+
+		
 gdt     dw 800h
 	dd gdt
 	dw      0
@@ -9,10 +22,6 @@ gdt     dw 800h
 	dd	00cf9a00h
 	dd	0000ffffh	; data descriptor
 	dd	00cf9200h
-	dd	0000ffffh	; cpl3 code descriptor
-	dd	00cffa10h
-	dd	0000ffffh	; cpl3 data descriptor
-	dd	00cff210h
 	dw	video0,8h	; Call gate Video dpl 0
 	dw	8c00h,0
 	dw	video3,8h	; Call gate Video dpl 3
@@ -22,6 +31,11 @@ gdt     dw 800h
 	dw	200h,tss0	; Task 0
 	dd	00008900h
 
+	
+c3desc	equ	0040fa00h
+d3desc	equ	0040f200h
+	
+
 	times 800h-$+gdt db 0
 idt	times 100h dw dummyh,8,8e00h,0
 
@@ -29,8 +43,8 @@ idt	times 100h dw dummyh,8,8e00h,0
 idtptr	dw	07ffh
 	dd	idt
 
-lastsel dd	40h
-msg0	db	'Initiating....',0ah,0
+lastsel dd	30h
+
 msg1	db	'Running....',0ah,0
 msgl1	db	'Loading task 1...',0ah,0
 msgr1	db	'Running task 1...',0ah,0
@@ -68,22 +82,73 @@ start:
  	mov esi,endmark
  	mov ecx,1000h
  	rep movsb
-	mov esi,0
+	mov esi,eax
 	call loadtask
 	call runtask
- 	mov ecx,1000h
- 	call memget
- 	mov edi,eax
-	mov esi,endmark+1000h
-	mov ecx,1000h
-	rep movsb
-	mov esi,1000h
-	call loadtask
-	call runtask
+	
+   	mov ecx,1000h
+  	call memget
+   	mov edi,eax
+  	mov esi,endmark+1000h
+  	mov ecx,1000h
+  	rep movsb
+  	mov esi,eax
+  	call loadtask
+  	call runtask
 
 	jmp $
 
-addgdtsel:			; eax:ebx = descriptor
+newgdtent:			; esi = pekare till task
+	push eax
+	push ebx
+	push esi
+	push edi
+
+	mov eax,esi
+	shl eax,16
+	mov ecx,[esi+4]
+	add ecx,[esi+10h]
+	add ecx,[esi+14h]
+	mov ax,cx
+	mov ebx,c3desc
+	call addgdtent
+	mov edi,edx
+	mov edx,[esi]
+	add edx,esi
+	shr edx,16
+	mov [1000h+edi+4],dl
+	mov [1000h+edi+7],dh
+	shr ecx,16
+	and cl,0fh
+	or [1000h+edi+6],cl	
+
+		
+	mov eax,[esi+8h]
+	add eax,esi
+	shl eax,16
+	mov ecx,[esi+0ch]
+	add ecx,[esi+10h]
+	add ecx,[esi+14h]
+	mov ax,cx
+	mov ebx,d3desc
+	call addgdtent
+	mov ebx,[esi+8]
+	add ebx,esi
+	shr ebx,16
+	mov [1000h+edx+4],bl
+	mov [1000h+edx+7],bh
+	shr ecx,16
+	and cl,0fh
+	or [1000h+edx+6],cl
+	mov ecx,edi
+	pop edi		
+	pop esi
+	pop ebx
+	pop eax
+	ret
+	
+
+addgdtent:				; eax:ebx = descriptor
 	mov edx,[lastsel]
 	add edx,8
 	mov [1000h+edx],eax

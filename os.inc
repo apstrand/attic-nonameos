@@ -1,10 +1,8 @@
 c0d	equ	08h
 d0d	equ	10h
-c3d	equ	18h+3
-d3d	equ	20h+3
-vid0	equ	28h
-vid3	equ	30h+3
-tsw	equ	38h
-t0desc	equ	40h
-t1desc	equ	48h
-t2desc	equ	50h
+vid0	equ	18h
+vid3	equ	20h+3
+tsw	equ	28h
+t0desc	equ	30h
+c3d	equ	38h+3
+d3d	equ	40h+3

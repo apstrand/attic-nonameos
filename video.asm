@@ -27,7 +27,7 @@ vfuncs	equ	($-vfunc)/4
 	;; 8 = Write Doubleword
 	;; 	eax = dword
 	
-video3:				; Video skal för tasks (ds!=d0d)
+video3:				; Video skal för tasks (ds dpl=3)
 	cmp bl,vfuncs
 	jb .l1
 	stc
@@ -41,16 +41,14 @@ video3:				; Video skal för tasks (ds!=d0d)
 	push ebx
 	and ebx,0ffh
 	shl ebx,2
-	add esi,100000h		; Kompensera för data descriptor base=100000h
 	call [vfunc+ebx]
-	sub esi,100000h
 	pop ebx
 	mov byte [vbusy],0
 	pop ds
 	clc
 	retf
 
-video0:				; Video skal för kernel (ds=d0d)
+video0:				; Video skal för kernel (ds dpl=0)
 	cmp bl,vfuncs
 	jb .l1
 	stc
@@ -191,6 +189,9 @@ vputchar:			; tecken i al
 	
 vwstr:				; sträng i esi
 	push eax
+	mov eax,[runtsk]
+	mov eax,[tsksel+eax*8+4]
+	add esi,[eax+tsofs]
 .l1:	lodsb
 	or al,al
 	jz .l2
