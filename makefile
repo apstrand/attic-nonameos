@@ -4,5 +4,8 @@ init:	init.asm ints.asm job.asm video.asm
 boot:	boot.asm
 	nasm boot.asm
 
-w:	init boot
-	su -c 'cat boot init > /dev/fd0'
+tasks:	tasks.asm
+	nasm tasks.asm
+
+w:	init boot tasks
+	su -c 'cat boot init tasks> /dev/fd0'

@@ -1,20 +1,9 @@
 [bits 32]
+[inc os.inc]
 [section .data]
-	
-t0stk	equ	21000h
-t1stk	equ	22000h
 
-c0d	equ	08h
-d0d	equ	10h
-t0desc	equ	18h
-t1desc	equ	20h
-t2desc	equ	28h
-c3d	equ	33h
-d3d	equ	3bh
-c0dc	equ	4bh
-vid0	equ	48h
-vid3	equ	53h	
-				
+	
+	
 gdt:	dw	800h
 	dd	gdt
 	dw	0
@@ -29,16 +18,16 @@ gdt:	dw	800h
 	dd	00000200h	; 28h Task 2
 	dd	00008900h
 	dd	0000ffffh	; 30h cpl3 code descriptor
-	dd	00cffa00h
+	dd	00cffa10h
 	dd	0000ffffh	; 38h cpl3 data descriptor
-	dd	00cff200h
-	dd	0000ffffh	; 40h Conforming Code descriptor
-	dd	00cf9e00h
-	dw	video,8h	; 48h Call gate Video cpl 0
+	dd	00cff210h
+	dw	video0,8h	; 40h Call gate Video dpl 0
 	dw	8c00h,0
-	dw	video,43h	; 50h Call gate Video cpl 3
+	dw	video3,8h	; 48h Call gate Video dpl 3
 	dw	0ec00h,0
-
+	dw	0,t0desc	; 50h Task Gate
+	dw	08500h,0
+	
 	times 800h-$+gdt db 0
 idt:	times 100h dw dummyh,8,8e00h,0
 
@@ -78,24 +67,28 @@ start:
 	mov esi,msg1
 	mov bl,5
 	call vid0:0
+	mov esi,endmark
+	mov edi,100000h
+	mov ecx,1000h
+ 	rep movsb
 	mov esi,msgl1
 	mov bl,5
 	call vid0:0
-	mov esi,task1
+	mov esi,[endmark]
+  	call loadtask
+   	mov esi,msgr1
+   	mov bl,5
+   	call vid0:0
+   	call runtask	
+  	mov esi,msgl2
+  	mov bl,5
+  	call vid0:0
+  	mov esi,[endmark+4]
  	call loadtask
- 	mov esi,msgr1
- 	mov bl,5
- 	call vid0:0
- 	call runtask	
- 	mov esi,msgl2
- 	mov bl,5
- 	call vid0:0
- 	mov esi,task2
-	call loadtask
- 	mov esi,msgr2
- 	mov bl,5
- 	call vid0:0
- 	call runtask
+  	mov esi,msgr2
+  	mov bl,5
+  	call vid0:0
+  	call runtask
 	jmp $
 
 
@@ -225,11 +218,13 @@ delay:
 	jmp .l1
 .l1:	ret
 
+
 [inc job.asm]
 [inc video.asm]
 [inc ints.asm]
 [inc kbd.asm]
-	
-[section .text]
-	times 1000h-$+start db 0	; Koden börjar på 8:1000h
 
+[section .text]
+	times 1000h-$+start db 0
+[section .data]
+endmark:

@@ -42,12 +42,10 @@ tskcodebase	equ	100000h
 tskdatabase	equ	101000h
 tskstackbase	equ	102000h
 	
-tssptr:	dd	0
-	dd	t0desc
-	
 inittssd dd	t0desc
 firsttss dd	t0desc
 lasttss	 dd	t0desc
+
 
 ntss	dd	0
 runtss	dd	0
@@ -57,9 +55,6 @@ tss0:	times 200h db 0
 tss1:	times 200h db 0
 tss2:	times 200h db 0
 
-t1msg:	db 'Hello World...',0	
-t2msg:	db 'Hello World again...',0	
-trn:	db '-\|/'
 	
 [section .text]
 
@@ -98,14 +93,14 @@ addtss:				; eax=tasknr esi=taskptr
 	push ebx
 	push ecx
 	mov ecx,eax
-	mov ebx,tskstackbase
+	mov ebx,110000h
 	shl eax,12
 	lea eax,[eax*2+eax]	; tasknr*3*4096
 	add ebx,eax
 	shl ecx,9		; tasknr*200h
 	mov dword [ecx+tss+tseip],esi
 	mov dword [ecx+tss+tsesp],ebx
-	add ebx,100000h
+	add ebx,10000h
 	mov dword [ecx+tss+tsesp0],ebx
 	mov dword [ecx+tss+tseflags],202h
 	mov dword [ecx+tss+tscs],c3d
@@ -131,43 +126,21 @@ addtss:				; eax=tasknr esi=taskptr
 	pop ebx
 	pop eax
 	ret
-	
 
 
-task1:	mov ax,1000h
-	mov bl,1
-	call vid3:0
-	mov esi,t1msg
-	mov bl,5
- 	call vid3:0
-	xor edx,edx
-	mov bl,4
-.l1:	mov al,[trn+edx]
-	call vid3:0
-	mov ecx,100000h
-	loop $
-	mov al,8
-	call vid3:0
-	inc dl
-	and dl,3
-	jmp .l1
-	
-task2:	mov ax,1200h
-	mov bl,1
-	call vid3:0
-	mov esi,t2msg
-	mov bl,5
- 	call vid3:0
-	xor edx,edx
-	mov bl,4
-.l1:	mov al,[trn+edx]
-	call vid3:0
-	mov ecx,100000h
-	loop $
-	mov al,8
-	call vid3:0
-	inc dl
-	and dl,3
-	jmp .l1
-	
-		
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

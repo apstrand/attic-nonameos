@@ -1,8 +1,5 @@
 [section .data]
 
-vcurpos:	dd	0
-vcurofs:	dd	0
-
 vbusy:	db	0
 	
 vfunc:	dd vcls,vsetpos,vgetpos,vgetrpos,vputchar,vwstr,vbyte,vword,vdword
@@ -30,7 +27,31 @@ vfuncs	equ	($-vfunc)/4
 	;; 8 = Write Doubleword
 	;; 	eax = dword
 	
-video:	cmp bl,vfuncs
+video3:				; Video skal för tasks (ds!=d0d)
+	cmp bl,vfuncs
+	jb .l1
+	stc
+	ret
+.l1:	push ds
+	push dword d0d
+	pop ds
+	cmp byte [vbusy],1
+	je .l1
+	mov byte [vbusy],1
+	push ebx
+	and ebx,0ffh
+	shl ebx,2
+	add esi,100000h		; Kompensera för data descriptor base=100000h
+	call [vfunc+ebx]
+	sub esi,100000h
+	pop ebx
+	mov byte [vbusy],0
+	pop ds
+	clc
+	retf
+
+video0:				; Video skal för kernel (ds=d0d)
+	cmp bl,vfuncs
 	jb .l1
 	stc
 	ret

@@ -1,0 +1,10 @@
+c0d	equ	08h
+d0d	equ	10h
+t0desc	equ	18h
+t1desc	equ	20h
+t2desc	equ	28h
+c3d	equ	33h
+d3d	equ	3bh
+vid0	equ	40h
+vid3	equ	4bh
+tsw	equ	50h
