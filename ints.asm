@@ -52,28 +52,26 @@ irq0:	push eax
 	mov [0b8000h+78*2],eax
 .l1:	mov al,20h
  	out 20h,al
-	cmp byte [ntss],0
+	cmp byte [ntask],0
 	je .l3
+	mov eax,[runtsk]
+.l4:	inc eax
+	cmp eax,[ntask]
+	jbe .l2
 	xor eax,eax
-  	mov ax,[gdt+tsw+2]
-.l4:	add eax,8
-  	cmp eax,[lasttss]
-  	jbe .l2
-  	mov eax,[firsttss]
-.l2: 	mov ebx,eax
-	sub ebx,t0desc
-	shl ebx,6
-	cmp dword [ebx+tss+tsrun],1
-  	jne .l4
-	add ebx,tss
-	mov [runtss],ebx
-	mov [gdt+tsw+2],ax
+.l2:
+	mov ebx,[tsksel+eax*8+4]
+	cmp dword [ebx+tsrun],1
+	mov [runtsk],eax
+	mov eax,[tsksel+eax*8]
+	mov [1000h+tsw+2],ax
 	pop ds
 	pop ebx
  	pop eax
   	jmp tsw:0
 	iret
-.l3:	pop ebx
+.l3:	pop ds
+	pop ebx
 	pop eax
 	iret
 

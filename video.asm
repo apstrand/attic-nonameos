@@ -35,8 +35,8 @@ video3:				; Video skal för tasks (ds!=d0d)
 .l1:	push ds
 	push dword d0d
 	pop ds
-	cmp byte [vbusy],1
-	je .l1
+.l2:	cmp byte [vbusy],1
+	je .l2
 	mov byte [vbusy],1
 	push ebx
 	and ebx,0ffh
@@ -71,17 +71,17 @@ vcls:
 	push eax
 	push ebx
 	push edx
-	mov eax,[runtss]
-	mov ebx,[eax+tsvscr]
+	mov eax,[runtsk]
+	mov edx,[tsksel+eax*8+4]
+	mov ebx,[edx+tsvscr]
 	mov eax,80*25*2
 	add ebx,0b8000h
 .l1:	sub eax,4
 	mov dword [ebx+eax],07200720h
 	jnz .l1
 	xor eax,eax
-	mov ebx,[runtss]
-	mov [ebx+tsvpos],eax
-	mov [ebx+tsvofs],eax
+	mov [edx+tsvpos],eax
+	mov [edx+tsvofs],eax
 	mov dx,3d4h
 	mov ax,0dh
 	out dx,ax
@@ -96,8 +96,10 @@ vsetpos:			; ax = RRCC
 	push eax
 	push ebx
 	push edx
-	mov ebx,[runtss]
-	mov [ebx+tsvpos],ax
+	push edi
+	mov ebx,[runtsk]
+	mov edi,[tsksel+ebx*8+4]
+	mov [edi+tsvpos],ax
 	xor ebx,ebx
 	mov bl,ah
 	and eax,0ffh
@@ -112,8 +114,8 @@ vsetpos:			; ax = RRCC
 	mov al,0fh
 	out dx,ax
 	shl ebx,1
-	mov eax,[runtss]
-	mov [eax+tsvofs],ebx
+	mov [edi+tsvofs],ebx
+	pop edi
 	pop edx
 	pop ebx
 	pop eax
@@ -121,7 +123,8 @@ vsetpos:			; ax = RRCC
 
 	
 vgetpos:
-	mov eax,[runtss]
+	mov eax,[runtsk]
+	mov eax,[tsksel+eax*8+4]
 	mov eax,[eax+tsvpos]
 	ret
 
@@ -141,7 +144,8 @@ vgetrpos:			; returnerar:	ax = RRCC
 	in al,dx
 	mov ah,bh
 	shl ax,1
-	mov ebx,[runtss]
+	mov ebx,[runtsk]
+	mov ebx,[tsksel+ebx*8+4]
 	mov [ebx+tsvofs],ax
 	shr ax,1
 	mov cl,80
@@ -171,7 +175,8 @@ vputchar:			; tecken i al
 	ret
 .l2:	push ebx
 	push ecx
-	mov ecx,[runtss]
+	mov ecx,[runtsk]
+	mov ecx,[tsksel+ecx*8+4]
 	mov ebx,[ecx+tsvofs]
 	add ebx,[ecx+tsvscr]
 	mov ah,07h

@@ -1,95 +1,5 @@
-[bits 32]
-[inc os.inc]
-[section .data]
-
-	
-	
-gdt:	dw	800h
-	dd	gdt
-	dw	0
-	dd	0000ffffh	; 08h code descriptor
-	dd	00cf9a00h
-	dd	0000ffffh	; 10h data descriptor
-	dd	00cf9200h
-	dw	200h,tss0	; 18h Task 0
-	dd	00008900h
-	dd	00000200h	; 20h Task 1
-	dd	00008900h
-	dd	00000200h	; 28h Task 2
-	dd	00008900h
-	dd	0000ffffh	; 30h cpl3 code descriptor
-	dd	00cffa10h
-	dd	0000ffffh	; 38h cpl3 data descriptor
-	dd	00cff210h
-	dw	video0,8h	; 40h Call gate Video dpl 0
-	dw	8c00h,0
-	dw	video3,8h	; 48h Call gate Video dpl 3
-	dw	0ec00h,0
-	dw	0,t0desc	; 50h Task Gate
-	dw	08500h,0
-	
-	times 800h-$+gdt db 0
-idt:	times 100h dw dummyh,8,8e00h,0
-
-
-idtptr:	dw	07ffh
-	dd	idt
-	
-
-msg0	db	'Initiating....',0ah,0
-msg1	db	'Running....',0ah,0
-msgl1	db	'Loading task 1...',0ah,0
-msgr1	db	'Running task 1...',0ah,0
-msgl2	db	'Loading task 2...',0ah,0
-msgr2	db	'Running task 2...',0ah,0
-	
 	
 [section .text]
-start:	
-	mov ax,d0d
-	mov ds,ax
-	mov es,ax
-	mov fs,ax
-	mov gs,ax
-	mov ss,ax
-	mov esp,10000h
-	
-	call enableA20		
-	;; 	call getmems
-	call init8259
-	call init8253
-    	call initIDT
-  	call inittss
- 	lidt [idtptr]
-  	sti
-	mov bl,0
-	call vid0:0
-	mov esi,msg1
-	mov bl,5
-	call vid0:0
-	mov esi,endmark
-	mov edi,100000h
-	mov ecx,1000h
- 	rep movsb
-	mov esi,msgl1
-	mov bl,5
-	call vid0:0
-	mov esi,[endmark]
-  	call loadtask
-   	mov esi,msgr1
-   	mov bl,5
-   	call vid0:0
-   	call runtask	
-  	mov esi,msgl2
-  	mov bl,5
-  	call vid0:0
-  	mov esi,[endmark+4]
- 	call loadtask
-  	mov esi,msgr2
-  	mov bl,5
-  	call vid0:0
-  	call runtask
-	jmp $
 
 
 getmems:
@@ -99,11 +9,9 @@ getmems:
 	mov cl,[ebx]
 	cmp cl,al
 	jne .l2
-	inc ebx
+	add ebx,1024
 	jmp .l1
-.l2:	mov eax,ebx
-	mov bl,8
-	call vid0:0
+.l2:	mov [memsize],ebx
 	ret
 	
 initIDT:	
@@ -218,13 +126,3 @@ delay:
 	jmp .l1
 .l1:	ret
 
-
-[inc job.asm]
-[inc video.asm]
-[inc ints.asm]
-[inc kbd.asm]
-
-[section .text]
-	times 1000h-$+start db 0
-[section .data]
-endmark:
