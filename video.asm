@@ -3,7 +3,7 @@
 
 vbusy:	db	0
 	
-vfunc:	dd vcls,vsetpos,vgetpos,vgetrpos,vputchar,vwstr,vbyte,vword,vdword
+vfunc:	dd vcls,vsetpos,vgetpos,vgetrpos,vputchar,vwstr,vbyte,vword,vdword,sleep
 vfuncs	equ	($-vfunc)/4
 					
 [section .text]
@@ -29,7 +29,6 @@ vfuncs	equ	($-vfunc)/4
 	;; 	eax = dword
 
 vidih:				; Avbrotts hanterare för video funktioner
-	cli
 	push ds
 	push dword krnlds
 	pop ds
@@ -40,14 +39,13 @@ vidih:				; Avbrotts hanterare för video funktioner
 	call [vfunc+ebx*4]
 	pop ebx
 .l1:	pop ds
-
 	iret
 
 vcls:
 	push eax
 	push ebx
 	push edx
-	mov edx,[runpcbf]
+	mov edx,[runpcb]
 	mov ebx,[edx+tsvscr]
 	mov eax,80*25*2
 	add ebx,0b8000h
@@ -72,7 +70,7 @@ vsetpos:			; ax = RRCC
 	push ebx
 	push edx
 	push edi
-	mov edi,[runpcbf]
+	mov edi,[runpcb]
 	mov [edi+tsvpos],ax
 	xor ebx,ebx
 	mov bl,ah
@@ -97,7 +95,7 @@ vsetpos:			; ax = RRCC
 
 	
 vgetpos:
-	mov eax,[runpcbf]
+	mov eax,[runpcb]
 	mov eax,[eax+tsvpos]
 	ret
 
@@ -117,7 +115,7 @@ vgetrpos:			; returnerar:	ax = RRCC
 	in al,dx
 	mov ah,bh
 	shl ax,1
-	mov ebx,[runpcbf]
+	mov ebx,[runpcb]
 	mov [ebx+tsvofs],ax
 	shr ax,1
 	mov cl,80
@@ -147,7 +145,7 @@ vputchar:			; tecken i al
 	ret
 .l2:	push ebx
 	push ecx
-	mov ecx,[runpcbf]
+	mov ecx,[runpcb]
 	mov ebx,[ecx+tsvofs]
 	add ebx,[ecx+tsvscr]
 	mov ah,07h
@@ -162,7 +160,7 @@ vputchar:			; tecken i al
 	
 vwstr:				; sträng i esi
 	push eax
-	mov eax,[runpcbf]
+	mov eax,[runpcb]
 	add esi,[eax+tsofs]
 .l1:	lodsb
 	or al,al

@@ -79,32 +79,30 @@ irq0:	push eax
 	mov eax,[eax+tsnext]
 	jmp .lw
 .l2:	
-	mov eax,[runpcbf]
+	mov eax,[readyf]
 .lr:	inc dword [eax+tsttime]
 	dec dword [eax+tscpriv]
-	cmp eax,[runpcbl]
+	cmp eax,[readyl]
 	je .l3
 	mov eax,[eax+tsnext]
 	jmp .lr
 .l3:	
-	mov ebx,[runpcbf]
-	cmp ebx,[runpcbl]
-	jne .l21
-	jmp .l20.1
+	mov ebx,[readyf]
+	cmp ebx,[readyl]
+	je near .l20.1
 .l21:	cmp dword [ebx+tscpriv],0
-	js .l20z
-	jmp .l20.2
+	jns near .l20.2
 .l20z:	
 	mov eax,[ebx+tspriv]
 	mov edx,[ebx+tsnext]
 	mov ecx,ebx
 	
 .l5:	mov ecx,[ecx+tsnext]
-	cmp ecx,[runpcbl]
+	cmp ecx,[readyl]
  	je .l6			; Sist
 	cmp [ecx+tscpriv],eax
 	jbe .l5
-	mov [runpcbf],edx	; Infoga
+	mov [readyf],edx	; Infoga
 	mov [edx+tsprev],edx
 	mov edx,[ecx+tsnext]
 	mov [ecx+tsnext],ebx
@@ -113,12 +111,13 @@ irq0:	push eax
 	mov [ebx+tsnext],edx
 	jmp .l10
 .l6:	mov [ecx+tsnext],ebx
-	mov [runpcbl],ebx
+	mov [readyl],ebx
 	mov [ebx+tsprev],ecx
 	mov [ebx+tsnext],ebx
-	mov [runpcbf],edx
+	mov [readyf],edx
 	mov [edx+tsprev],edx
-.l10:	mov ebx,[runpcbf]
+.l10:	mov ebx,[readyf]
+	mov [runpcb],ebx
 	mov eax,[ebx+tspriv]
 	mov [ebx+tscpriv],eax
 	inc dword [ebx+tstime]
@@ -155,6 +154,7 @@ irq1:	push ds
 	and ebx,03fh
 	cmp [kbdbeg],ebx
 	je .l1
+	mov [kbdend],ebx
 	mov [kbdbuf+ebx],al
 .l1:	pop ebx
 	pop eax
@@ -327,7 +327,7 @@ ehregs:	mov ax,krnlds
 	mov edi,640+30
 	mov esi,eheip
 	call ehdword
-	mov eax,[runpcbf]
+	mov eax,[readyf]
 	mov esi,ehss
 	mov edi,640+60
 	call ehdword

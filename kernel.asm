@@ -86,7 +86,7 @@ start:
 	mov esi,eax
 	call loadtask
 	call runtask
-
+	jmp $
    	mov ecx,1000h
    	call memget
     	mov edi,eax
@@ -97,6 +97,23 @@ start:
    	call loadtask
    	call runtask
 
+; 	mov ecx,1000000h
+; 	loop $
+	
+; 	mov ebx,[readyf]
+; 	add eax,[ebx+tspriv]
+; 	mov [ebx+tscpriv],eax	; cpriv = priv + sleep
+; 	mov ecx,[ebx+tsnext]
+; 	mov [readyf],ecx
+; 	mov [ecx+tsprev],ecx	; Ta bort mig ur kön
+; 	mov eax,[ecx+tspriv]
+; 	mov [ecx+tscpriv],eax
+; 	mov eax,[ecx+tssel]
+; 	mov [gdt+tsw+2],ax
+
+
+	
+	
 	jmp $
 
 newgdtent:			; esi = pekare till task

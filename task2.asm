@@ -24,11 +24,15 @@ task2:	mov edi,trn
 	mov bl,5
  	int 42h
 	xor esi,esi
-	mov bl,4
-.l1:	mov al,[edi+esi]
+.l1:	mov bl,4
+	mov al,[edi+esi]
 	int 42h
 	mov ecx,100000h
 	loop $
+	mov eax,300
+	mov bl,9
+;  	int 42h	
+	mov bl,4
 	mov al,8
 	int 42h
 	inc esi

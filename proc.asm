@@ -8,8 +8,12 @@ tssd2	equ	8900h
 
 inittssd dd	t0desc
 
-runpcbf	dd	0
-runpcbl	dd	0
+runpcb	dd	0
+	
+npcbs	dd	0
+		
+readyf	dd	0
+readyl	dd	0
 
 waitpcbf	dd	0
 waitpcbl	dd	0
@@ -24,36 +28,51 @@ pcbs	times pcblen*10h	resb	0
 
 [section .text]
 
-; procih:	push ds
-; 	push dword krnlds
-; 	pop ds
-; 	cmp bl,[procfuncs]
-; 	ja .l1
-; 	and ebx,0fh
-; 	call [procfunc+ebx*4]
-; .l1:	pop ds
-; 	iret
-	
-; sleep:	push eax		; tid i eax (i .01 sek)
-; 	push ebx
-; 	push ecx
-; 	mov ebx,[runpcbf]
-; 	mov [ebx+tssleep],eax
-; 	mov dword [ebx+tsstat],0
-; 	pop ecx
-; 	pop ebx
-; 	pop eax
-; 	ret
+sleep:	push eax
+	push ebx
+	push ecx
+	push edx
+	mov ebx,[readyf]
+	add eax,[ebx+tspriv]
+	mov [ebx+tscpriv],eax	; cpriv = priv + sleep
+	mov ecx,[ebx+tsnext]
+	mov [readyf],ecx
+	mov [ecx+tsprev],ecx	; Ta bort mig ur kön
+
+; 	mov eax,[waitpcbf]
+; 	cmp eax,[waitpcbl]
+; 	je .l2
+; 	mov [waitpcbf],ebx
+; 	mov [ebx+tsnext],eax
+; 	mov [eax+tsprev],ebx
+; 	mov [ebx+tsprev],ebx
+; 	jmp .l4
+; .l2:	mov [waitpcbf],ebx
+; 	mov [waitpcbl],ebx
+; 	mov [ebx+tsprev],ebx
+; 	mov [ebx+tsnext],ebx
+; .l4:	
+
+	mov ecx,[readyf]
+	mov eax,[ecx+tspriv]
+	mov [ecx+tscpriv],eax
+	mov eax,[ecx+tssel]
+	mov [gdt+tsw+2],ax
+  	jmp tsw:0
+	pop edx
+	pop ecx
+	pop ebx
+	pop eax
+	ret
 
 loadtask:
 	push eax
-	xor ebx,ebx
-.l1:	cmp dword [pcbs+ebx+tsstat],-1
+	mov ebx,pcbs
+.l1:	cmp dword [ebx+tsstat],-1
 	je .l4
 	add ebx,pcblen
 	jmp .l1
-.l4:	add ebx,pcbs
-	call newgdtent
+.l4:	call newgdtent
 	call addtss		; ebx=pcb ecx=codesel edx=datasel esi=task
 	mov eax,[waitpcbl]
 	cmp eax,[waitpcbf]
@@ -96,7 +115,14 @@ runtask:			; PCB i ebx
 	mov [ecx+tsprev],eax
 	
 .l0	mov eax,[ebx+tspriv]
-	mov ecx,[runpcbf]
+	mov ecx,[readyf]
+        cmp ecx,0               ; Tom?
+	jne .l1
+	mov [readyf],ebx
+	mov [readyl],ebx
+	mov [ebx+tsnext],ebx
+	mov [ebx+tsprev],ebx
+	jmp .l4
 .l1:	cmp [ecx+tsnext],ecx
 	je .l3			; I slutet?
 	cmp [ecx+tspriv],eax
@@ -112,7 +138,7 @@ runtask:			; PCB i ebx
 .l3:	mov [ecx+tsnext],ebx	; Lägg till i slutet
 	mov [ebx+tsprev],ecx
 	mov [ebx+tsnext],ebx
-	mov [runpcbl],ebx
+	mov [readyl],ebx
 .l4	mov dword [ebx+tsstat],1
 	pop ecx
 	pop ebx
@@ -123,15 +149,17 @@ runtask:			; PCB i ebx
 initpcbs:
 	push eax
 	push ebx
-	mov ebx,pcblen*4
+	mov ebx,pcblen
 .l1:	mov dword [pcbs+ebx+tsstat],-1
-	sub ebx,pcblen
-	jnz .l1
+	add ebx,pcblen
+	cmp ebx,pcblen*10h
+	jbe .l1
 	mov eax,[inittssd]
 	ltr ax
 	mov ebx,pcbs
-	mov [runpcbf],ebx
-	mov [runpcbl],ebx
+	mov [readyf],ebx
+	mov [readyl],ebx
+	mov [runpcb],ebx
 	mov dword [ebx+tsrun],1
 	mov dword [ebx+tscpriv],10
 	mov dword [ebx+tspriv],10

@@ -78,13 +78,12 @@ initIDT:
 	mov [idt+16*8],dx
 	mov edx,irq0
   	mov [idt+20h*8],dx
+	mov edx,irq1
+  	mov [idt+21h*8],dx
 
 	mov edx,vidih
 	mov [idt+42h*8],dx
 	or byte [idt+42h*8+5],60h
-; 	mov edx,procih
-; 	mov [idt+43h*8],dx
-; 	or byte [idt+43h*8+5],60h
 	ret
 
 
@@ -96,7 +95,7 @@ init8253:			; Timeravbrott
 	mov al,2eh
 	out 40h,al
  	in al,21h		; irq 0 på
- 	and al,11111110b
+ 	and al,11111100b
  	out 21h,al
 	ret	
 	
