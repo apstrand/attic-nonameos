@@ -71,16 +71,21 @@ go:	mov si,msg1
 	xor si,si
 	xor di,di
 	rep movsb		; Flytta kod till 0:0
+	mov ax,0
 	mov ds,ax
-	lgdt [dword 1000h]
+	mov ax,[0]
+	mov bx,9000h
+	mov ds,bx
+	mov [gdt+2],ax
+	lgdt [gdt]
 	mov eax,1
 	mov cr0,eax
-	jmp 8:0h
+	jmp 8:8
 	
 print:	push ax
 	push bx
 	push ds
-	push word 7c0h
+	push word 9000h
 	pop ds
 	mov ah,0eh
 	xor bh,bh
@@ -97,7 +102,13 @@ print:	push ax
 
 msg1	db	'Loading...',0
 
+gdt	dw	800h
+	dd	0h
+
 times 200h-$+boot db 0
+
+
+
 
 
 

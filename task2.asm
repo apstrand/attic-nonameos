@@ -36,3 +36,5 @@ task2:	mov edi,trn
 	jmp .l1
 		
 clen	equ	$-cbeg
+
+

@@ -123,7 +123,7 @@ irq0:	push eax
 	mov [ebx+tscpriv],eax
 	inc dword [ebx+tstime]
 	mov eax,[ebx+tssel]
-	mov [1000h+tsw+2],ax
+	mov [gdt+tsw+2],ax
 	mov al,20h
 	out 20h,al
 	pop ds

@@ -1,14 +1,16 @@
 [section .data]
-	
-	
-memlst	dd	100000h,0
-	times	100h	dd	0,0 ; 100h * (ptr,size)
-memsize	dd	0,0
-memfr	dd	0
-membusy dd 0
 
 mfunc	dd	memavail,memfrees,memget,memfree
 mfuncs	equ	($-mfunc)/4
+
+
+		
+memfr	dd	0
+membusy	dd	0
+
+memlst	dd	0,0
+	times	80h	dd	0,0
+memsize	dd	0,0
 
 	
 [section .text]
@@ -121,5 +123,7 @@ memfree:			; pekare till minnesblock i eax
 	mov dword [ebx+4],0
 	pop ebx
 	ret
+
+
 
 

@@ -14,8 +14,9 @@ runpcbl	dd	0
 waitpcbf	dd	0
 waitpcbl	dd	0
 
+[section .bss]
 
-pcbs	times pcblen*3	db	0
+pcbs	times pcblen*10h	resb	0
 
 			
 ; procfunc	dd	sleep
@@ -33,12 +34,15 @@ pcbs	times pcblen*3	db	0
 ; .l1:	pop ds
 ; 	iret
 	
-; sleep:	push ebx		; tid i eax (i .01 sek)
-; 	mov ebx,[runtsk]
-; 	mov ebx,[tsksel+ebx*8+4]
+; sleep:	push eax		; tid i eax (i .01 sek)
+; 	push ebx
+; 	push ecx
+; 	mov ebx,[runpcbf]
 ; 	mov [ebx+tssleep],eax
-; 	mov dword [ebx+tsrun],0
+; 	mov dword [ebx+tsstat],0
+; 	pop ecx
 ; 	pop ebx
+; 	pop eax
 ; 	ret
 
 loadtask:
@@ -154,8 +158,8 @@ addtss:				; esi=taskptr, ecx=codesel, edx=datasel
 	mov esi,[esi]
 	mov dword [ebx+tseip],esi
 	mov dword [ebx+tsesp],eax
-	mov eax,10000h
-	add eax,ebx
+	mov eax,ebx
+	add eax,pcblen
 	mov dword [ebx+tsesp0],eax
 	mov dword [ebx+tseflags],202h
 	add edi,3
@@ -174,10 +178,10 @@ addtss:				; esi=taskptr, ecx=codesel, edx=datasel
 	mov ebx,tssd2
 	call addgdtent
 	mov [ecx+tssel],edx
-	mov [1000h+edx+2],cx
+	mov [gdt+edx+2],cx
 	bswap ecx
-	mov [1000h+edx+4],ch
-	mov [1000h+edx+7],cl
+	mov [gdt+edx+4],ch
+	mov [gdt+edx+7],cl
 	mov [ecx+tssel],edx
 	pop edi
 	pop edx

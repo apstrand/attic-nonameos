@@ -41,4 +41,5 @@ task1:
 clen	equ	$-cbeg
 
 [section .data]
-	times 1000h-(clen+dlen+2) db 0
+	times 200h-(clen+dlen+2) db 0
+

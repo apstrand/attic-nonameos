@@ -35,7 +35,6 @@ d3desc	equ	0040f200h
 	
 
 	times 800h-$+gdt db 0
-idt	times 100h dw dummyh,8,8e00h,0
 
 
 idtptr	dw	07ffh
@@ -48,7 +47,10 @@ msg1	db	'Running....',0ah,0
 
 
 [section .text]
-start:	
+	
+start:
+	dd	gdt
+	dd	0
 	mov ax,krnlds
 	mov ds,ax
 	mov es,ax
@@ -78,7 +80,7 @@ start:
  	mov ecx,1000h
  	call memget
  	mov edi,eax	
- 	mov esi,endmark
+ 	mov esi,dataend
  	mov ecx,1000h
  	rep movsb
 	mov esi,eax
@@ -88,10 +90,10 @@ start:
    	mov ecx,1000h
    	call memget
     	mov edi,eax
-   	mov esi,endmark+1000h
+   	mov esi,dataend+200h
    	mov ecx,1000h
    	rep movsb
-   	mov esi,eax
+	mov esi,eax
    	call loadtask
    	call runtask
 
@@ -131,8 +133,8 @@ newgdtent:			; esi = pekare till task
 addgdtent:				; eax:ebx = descriptor
 	mov edx,[lastsel]
 	add edx,8
-	mov [1000h+edx],eax
-	mov [1000h+edx+4],ebx
+	mov [gdt+edx],eax
+	mov [gdt+edx+4],ebx
 	mov [lastsel],edx
 	ret			; returnerar selector i edx
 
@@ -145,6 +147,6 @@ addgdtent:				; eax:ebx = descriptor
 [inc init.asm]
 
 [section .text]
-	times 1000h-$+start db 0
+codeend:
 [section .data]
-endmark:
+dataend:	

@@ -1,4 +1,13 @@
+
+[section .data]
+idt	times 100h	dd 0,0
 	
+	
+
+idt1	equ	dummyh+80000h
+idt2	equ	8e00h
+
+		
 [section .text]
 
 
@@ -11,10 +20,28 @@ getmems:
 	jne .l2
 	add ebx,1024
 	jmp .l1
-.l2:	mov [memsize],ebx
+.l2:	
+	mov ecx,104h
+.l3:	mov dword [memlst+ecx],0
+	sub ecx,4
+	jnz .l3
+	mov [memsize],ebx
+	mov [memfr],ebx
+	mov dword [memsize+4],0
+	mov dword [memlst],100000h
+	mov dword [membusy],0
 	ret
 	
-initIDT:	
+initIDT:
+	mov eax,idt1
+	mov ebx,idt2
+	xor ecx,ecx
+.l1:	mov [idt+ecx],eax
+	mov [idt+ecx+4],ebx
+	add ecx,8
+	cmp ecx,800h
+	jb .l1
+	
 	mov edx,exp0		; Exception handlers på int 0 till 20h
 	mov [idt+0*8],dx
 	mov edx,exp1
