@@ -9,7 +9,8 @@ tmrd:	dd	072f075ch
 		
 tmrc:	dd	10h
 
-	
+tmrs dd 0
+which dd 0	
 
 kbdbuf:	times 40h db
 kbdbeg:	dd	0
@@ -63,49 +64,78 @@ irq0:	push eax
 	mov ds,ax
   	dec dword [tmrc]
   	jnz .l1
-  	mov dword [tmrc],10h
+	mov dword [tmrc],10h
 	mov eax,[tmrd+16]
 	inc dword [tmrd+16]
 	and eax,03h
 	mov eax,[tmrd+eax*4]
-	mov [0b8000h+78*2],eax
-.l1:	xor eax,eax
-.l6:	mov ebx,[tsksel+eax*8+4]
-	dec dword [ebx+tscpriv]
-	inc dword [ebx+tsttime]
-	inc eax
-	cmp eax,[ntask]
-	jbe .l6
-	mov eax,[runtsk]
-.l4:	inc eax
-	cmp eax,[ntask]
-	jbe .l2
-	xor eax,eax
-.l2:	cmp eax,[runtsk]
+	mov [0b80a0h+78*2],eax
+.l1:	mov eax,[waitpcbf]
+	or eax,eax
+	jz .l2
+.lw:	inc dword [eax+tsttime]
+	cmp eax,[waitpcbl]
+	je .l2
+	mov eax,[eax+tsnext]
+	jmp .lw
+.l2:	
+	mov eax,[runpcbf]
+.lr:	inc dword [eax+tsttime]
+	dec dword [eax+tscpriv]
+	cmp eax,[runpcbl]
 	je .l3
-	mov ebx,[tsksel+eax*8+4]
-	cmp dword [ebx+tsrun],1
-	jne .l4
-	add dword [ebx+tscpriv],0
-	jns .l4
-	mov [runtsk],eax
+	mov eax,[eax+tsnext]
+	jmp .lr
+.l3:	
+	mov ebx,[runpcbf]
+	cmp ebx,[runpcbl]
+	jne .l21
+	jmp .l20.1
+.l21:	cmp dword [ebx+tscpriv],0
+	js .l20z
+	jmp .l20.2
+.l20z:	
+	mov eax,[ebx+tspriv]
+	mov edx,[ebx+tsnext]
+	mov ecx,ebx
+	
+.l5:	mov ecx,[ecx+tsnext]
+	cmp ecx,[runpcbl]
+ 	je .l6			; Sist
+	cmp [ecx+tscpriv],eax
+	jbe .l5
+	mov [runpcbf],edx	; Infoga
+	mov [edx+tsprev],edx
+	mov edx,[ecx+tsnext]
+	mov [ecx+tsnext],ebx
+	mov [edx+tsprev],ebx
+	mov [ebx+tsprev],ecx
+	mov [ebx+tsnext],edx
+	jmp .l10
+.l6:	mov [ecx+tsnext],ebx
+	mov [runpcbl],ebx
+	mov [ebx+tsprev],ecx
+	mov [ebx+tsnext],ebx
+	mov [runpcbf],edx
+	mov [edx+tsprev],edx
+.l10:	mov ebx,[runpcbf]
+	mov eax,[ebx+tspriv]
+	mov [ebx+tscpriv],eax
 	inc dword [ebx+tstime]
-	push dword [ebx+tspriv]
-	pop dword [ebx+tscpriv]
- 	mov eax,[tsksel+eax*8]
+	mov eax,[ebx+tssel]
 	mov [1000h+tsw+2],ax
 	mov al,20h
- 	out 20h,al
+	out 20h,al
 	pop ds
 	pop ecx
 	pop ebx
  	pop eax
   	jmp tsw:0
 	iret
-.l3:	mov ebx,[tsksel+eax*8+4]
-	inc dword [ebx+tstime]
-	push dword [ebx+tspriv]
-	pop dword [ebx+tscpriv]	
+	
+.l20.1:	mov eax,[ebx+tspriv]
+	mov [ebx+tscpriv],eax
+.l20.2:	inc dword [ebx+tstime]
 	mov al,20h
  	out 20h,al
 	pop ds
@@ -140,93 +170,93 @@ dummyh:
 exp0:	pushad
 	mov esi,exp0msg
 	call ehregs
-	hlt
+	jmp $
 	
 exp1:	pushad
 	mov esi,exp1msg
 	call ehregs
-	hlt
+	jmp $
 		
 exp2:	pushad
 	mov esi,exp2msg
 	call ehregs
-	hlt
+	jmp $
 	
 exp3:	pushad
 	mov esi,exp3msg
 	call ehregs
-	hlt
+	jmp $
 	
 exp4:	pushad
 	mov esi,exp4msg
 	call ehregs
-	hlt
+	jmp $
 	
 exp5:	pushad
 	mov esi,exp5msg
 	call ehregs
-	hlt
+	jmp $
 	
 exp6:	pushad
 	mov esi,exp6msg
 	call ehregs
-	hlt
+	jmp $
 	
 exp7:	pushad
 	mov esi,exp7msg
 	call ehregs
-	hlt
+	jmp $
 	
 exp8:	add esp,4
 	pushad
 	mov esi,exp8msg
 	call ehregs
-	hlt
+	jmp $
 	
 exp9:	pushad
 	mov esi,exp9msg
 	call ehregs
-	hlt
+	jmp $
 	
 exp10:	add esp,4
 	pushad
 	mov esi,exp10msg
 	call ehregs
-	hlt
+	jmp $
 	
 exp11:	add esp,4
 	pushad
 	mov esi,exp11msg
 	call ehregs
-	hlt
+	jmp $
 	
 exp12:	add esp,4
 	pushad
 	mov esi,exp12msg
 	call ehregs
-	hlt
+	jmp $
 	
 exp13:	add esp,4
 	pushad
 	mov esi,exp13msg
 	call ehregs
-	hlt
+	jmp $
 	
 exp14:	add esp,4
 	pushad
 	mov esi,exp14msg
 	call ehregs
-	hlt
+	jmp $
 	
 exp15:	pushad
 	mov esi,exp15msg
 	call ehregs
-	hlt
+	jmp $
 	
 exp16:	pushad
 	mov esi,exp16msg
 	call ehregs
-	hlt
+	jmp $
 	
 
 ehregs:	mov ax,krnlds
@@ -289,7 +319,7 @@ ehregs:	mov ax,krnlds
 	mov edi,480+90
 	call ehdword
 	
-	mov eax,[esp+40]
+	mov eax,[esp+48]
 	mov edi,640
 	mov esi,ehcs
 	call ehdword
@@ -297,14 +327,14 @@ ehregs:	mov ax,krnlds
 	mov edi,640+30
 	mov esi,eheip
 	call ehdword
-	mov eax,[esp+52]
+	mov eax,[runpcbf]
 	mov esi,ehss
 	mov edi,640+60
 	call ehdword
-	mov eax,[esp+56]
-	mov esi,ehesp
-	mov edi,640+90
-	call ehdword
+; 	mov eax,[esp+56]
+; 	mov esi,ehesp
+; 	mov edi,640+90
+; 	call ehdword
 	
 	ret
 

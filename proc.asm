@@ -1,121 +1,184 @@
 
-
 	
 [section .data]
 
-tssd1	equ	200h
+tssd1	equ	300h
+pcblen	equ	tssd1
 tssd2	equ	8900h
 
 inittssd dd	t0desc
 
-tsksel	times	40h*2	dd	0
-ntask	dd	0
-runtsk  dd	0
+runpcbf	dd	0
+runpcbl	dd	0
 
-ntss	dd	0
-runtss	dd	0
+waitpcbf	dd	0
+waitpcbl	dd	0
 
-tss:
-tss0	times 200h db 0
-tss1	times 200h db 0
-tss2	times 200h db 0
 
-procfunc:	dd	sleep
-procfuncs	equ ($-procfunc)/4
+pcbs	times pcblen*3	db	0
+
+			
+; procfunc	dd	sleep
+; procfuncs	equ ($-procfunc)/4
 
 [section .text]
 
-procih:	push ds
-	push dword krnlds
-	pop ds
-	cmp bl,[procfuncs]
-	ja .l1
-	and ebx,0fh
-	call [procfunc+ebx*4]
-.l1:	pop ds
-	iret
+; procih:	push ds
+; 	push dword krnlds
+; 	pop ds
+; 	cmp bl,[procfuncs]
+; 	ja .l1
+; 	and ebx,0fh
+; 	call [procfunc+ebx*4]
+; .l1:	pop ds
+; 	iret
 	
-sleep:	push ebx		; tid i eax (i .01 sek)
-	mov ebx,[runtsk]
-	mov ebx,[tsksel+ebx*8+4]
-	mov [ebx+tssleep],eax
-	mov dword [ebx+tsrun],0
-	pop ebx
-	ret
+; sleep:	push ebx		; tid i eax (i .01 sek)
+; 	mov ebx,[runtsk]
+; 	mov ebx,[tsksel+ebx*8+4]
+; 	mov [ebx+tssleep],eax
+; 	mov dword [ebx+tsrun],0
+; 	pop ebx
+; 	ret
 
-loadtask:			; Returnerar tasknr i eax
-	mov eax,[ntask]
-	inc eax
- 	call newgdtent
-	call addtss
-	mov [ntask],eax
-	ret
-
-runtask:			; Tasknr i eax
+loadtask:
 	push eax
-	mov eax,[tsksel+eax*8+4]
-	mov dword [eax+tsrun],1
+	xor ebx,ebx
+.l1:	cmp dword [pcbs+ebx+tsstat],-1
+	je .l4
+	add ebx,pcblen
+	jmp .l1
+.l4:	add ebx,pcbs
+	call newgdtent
+	call addtss		; ebx=pcb ecx=codesel edx=datasel esi=task
+	mov eax,[waitpcbl]
+	cmp eax,[waitpcbf]
+	je .l2			; Waiting kön tom.
+	mov [eax+tsnext],ebx
+	mov [ebx+tsprev],eax
+	mov [ebx+tsnext],ebx
+	mov [waitpcbl],ebx
+	jmp .l3
+.l2:	mov [ebx+tsprev],ebx
+	mov [ebx+tsnext],ebx
+	mov [waitpcbf],ebx
+	mov [waitpcbl],ebx
+.l3:	mov dword [ebx+tsstat],0
+	pop eax
+	ret
+
+runtask:			; PCB i ebx
+	push eax
+	push ebx
+	push ecx
+	mov eax,[ebx+tsprev]
+	mov ecx,[ebx+tsnext]
+	cmp eax,ecx
+	jne .l00		; Ensam i kedjan?
+	mov dword [waitpcbf],0
+	mov dword [waitpcbl],0
+	jmp .l0
+.l00:	cmp eax,ebx		
+	jne .l01		; Först i kedjan?	
+	mov [waitpcbf],ecx
+	mov [ecx+tsprev],ecx
+	jmp .l0
+.l01:	cmp ecx,ebx
+	jne .l02		; Sist i kedjan?
+	mov [waitpcbl],eax
+	mov [eax+tsnext],eax
+	jmp .l0
+.l02:	mov [eax+tsnext],ecx
+	mov [ecx+tsprev],eax
+	
+.l0	mov eax,[ebx+tspriv]
+	mov ecx,[runpcbf]
+.l1:	cmp [ecx+tsnext],ecx
+	je .l3			; I slutet?
+	cmp [ecx+tspriv],eax
+	ja .l2			; Högre prioritet?
+	mov ecx,[ecx+tsnext]
+	jmp .l1			; Nästa
+.l2:	mov eax,[ecx+tsnext]	; Infoga
+	mov [ecx+tsnext],ebx
+	mov [ebx+tsnext],eax
+	mov [ebx+tsprev],ecx
+	mov [eax+tsprev],ebx
+	jmp .l4
+.l3:	mov [ecx+tsnext],ebx	; Lägg till i slutet
+	mov [ebx+tsprev],ecx
+	mov [ebx+tsnext],ebx
+	mov [runpcbl],ebx
+.l4	mov dword [ebx+tsstat],1
+	pop ecx
+	pop ebx
 	pop eax
 	ret
 
 
-inittss:
+initpcbs:
+	push eax
+	push ebx
+	mov ebx,pcblen*4
+.l1:	mov dword [pcbs+ebx+tsstat],-1
+	sub ebx,pcblen
+	jnz .l1
 	mov eax,[inittssd]
 	ltr ax
-	mov [tsksel],eax
-	mov eax,tss0
-	mov [runtss],eax
-	mov [tsksel+4],eax
-	mov dword [eax+tsrun],1
-	mov dword [eax+tscpriv],10
-	mov dword [eax+tspriv],10
+	mov ebx,pcbs
+	mov [runpcbf],ebx
+	mov [runpcbl],ebx
+	mov dword [ebx+tsrun],1
+	mov dword [ebx+tscpriv],10
+	mov dword [ebx+tspriv],10
+	mov dword [ebx+tssel],eax
+	mov dword [ebx+tsnext],ebx
+	mov dword [ebx+tsprev],ebx
+	mov dword [ebx+tsstat],1
+	mov dword [ebx+tsofs],0
+	mov dword [ebx+tsvscr],0
+	pop ebx
+	pop eax
 	ret
 
-addtss:				; esi=taskptr
+addtss:				; esi=taskptr, ecx=codesel, edx=datasel
 	push eax
 	push ebx
 	push ecx
 	push edx
 	push edi
 	mov edi,ecx
-	mov ecx,eax
-	shl ecx,9			; tasknr*200h
-	mov ebx,[esi+18h]
-	add ebx,[esi+1ch]
-	mov dword [ecx+tss+tsofs],esi
+	mov eax,[esi+18h]
+	add eax,[esi+1ch]
+	mov dword [ebx+tsofs],esi
 	mov esi,[esi]
-	mov dword [ecx+tss+tseip],esi
-	mov dword [ecx+tss+tsesp],ebx
-	mov ebx,10000h
-	add ebx,ecx
-	mov dword [ecx+tss+tsesp0],ebx
-	mov dword [ecx+tss+tseflags],202h
+	mov dword [ebx+tseip],esi
+	mov dword [ebx+tsesp],eax
+	mov eax,10000h
+	add eax,ebx
+	mov dword [ebx+tsesp0],eax
+	mov dword [ebx+tseflags],202h
 	add edi,3
 	add edx,3
-	mov dword [ecx+tss+tscs],edi
-	mov dword [ecx+tss+tsds],edx
-	mov dword [ecx+tss+tses],edx
-	mov dword [ecx+tss+tsfs],edx
-	mov dword [ecx+tss+tsgs],edx
-	mov dword [ecx+tss+tsss],edx
-	mov dword [ecx+tss+tsss0],krnlds
-	mov dword [ecx+tss+tspriv],20
-	mov dword [ecx+tss+tscpriv],20
-	mov edi,ecx
-	shr edi,9
-	mov dword [ecx+tss+tsnum],edi
-	add ecx,tss
-	push ecx
+	mov dword [ebx+tscs],edi
+	mov dword [ebx+tsds],edx
+	mov dword [ebx+tses],edx
+	mov dword [ebx+tsfs],edx
+	mov dword [ebx+tsgs],edx
+	mov dword [ebx+tsss],edx
+	mov dword [ebx+tsss0],krnlds
+	mov dword [ebx+tspriv],20
+	mov dword [ebx+tscpriv],20
+	mov ecx,ebx
 	mov eax,tssd1
 	mov ebx,tssd2
 	call addgdtent
+	mov [ecx+tssel],edx
 	mov [1000h+edx+2],cx
 	bswap ecx
 	mov [1000h+edx+4],ch
 	mov [1000h+edx+7],cl
-	mov [tsksel+edi*8],edx
-	pop ebx
-	mov [tsksel+edi*8+4],ebx
+	mov [ecx+tssel],edx
 	pop edi
 	pop edx
 	pop ecx

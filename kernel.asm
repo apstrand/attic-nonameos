@@ -26,7 +26,7 @@ tsw	equ	$-gdt
 	dw	0,t0desc	; Task Gate
 	dw	08500h,0
 t0desc	equ	$-gdt
-	dw	200h,tss0	; Task 0
+	dw	400h,pcbs	; Task 0
 	dd	00008900h
 
 	
@@ -57,18 +57,22 @@ start:
 	mov ss,ax
 	mov esp,10000h
 	
-	call enableA20		
+	call enableA20
  	call getmems
 	call init8259
 	call init8253
 	call initIDT
-	call inittss
+	call initpcbs
 	lidt [idtptr]
 	sti
+
 	mov bl,0
 	int 42h
 	mov esi,msg1
 	mov bl,5
+	int 42h
+	mov bl,4
+	mov al,0ah
 	int 42h
 
  	mov ecx,1000h
@@ -80,7 +84,7 @@ start:
 	mov esi,eax
 	call loadtask
 	call runtask
-	
+
    	mov ecx,1000h
    	call memget
     	mov edi,eax
@@ -91,32 +95,8 @@ start:
    	call loadtask
    	call runtask
 
-.l1:	mov ax,0700h
-	mov bl,1
-	int 42h
-  	mov eax,[tsksel+4]
-   	mov eax,[tstime+eax]
-	mov bl,8
-	int 42h
-	mov bl,4
-	mov al,0ah
-	int 42h
-	mov eax,[tsksel+12]
-	mov eax,[eax+tstime]
-	mov bl,8
-	int 42h
-	mov bl,4
-	mov al,0ah
-	int 42h
-	mov eax,[tsksel+20]
-	mov eax,[eax+tstime]
-	mov bl,8
-	int 42h
-
-	jmp .l1
 	jmp $
 
-	
 newgdtent:			; esi = pekare till task
 	push eax
 	push ebx
@@ -168,4 +148,3 @@ addgdtent:				; eax:ebx = descriptor
 	times 1000h-$+start db 0
 [section .data]
 endmark:
-

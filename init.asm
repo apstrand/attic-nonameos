@@ -55,9 +55,9 @@ initIDT:
 	mov edx,vidih
 	mov [idt+42h*8],dx
 	or byte [idt+42h*8+5],60h
-	mov edx,procih
-	mov [idt+43h*8],dx
-	or byte [idt+43h*8+5],60h
+; 	mov edx,procih
+; 	mov [idt+43h*8],dx
+; 	or byte [idt+43h*8+5],60h
 	ret
 
 

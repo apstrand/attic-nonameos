@@ -38,6 +38,10 @@ tsofs	resd	1
 tspriv	resd	1
 tscpriv	resd	1
 tssleep	resd	1
+tssel	resd	1
+tsnext	resd	1
+tsprev	resd	1
+tsstat	resd	1
 
 
 
