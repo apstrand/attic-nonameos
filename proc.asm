@@ -2,69 +2,85 @@
 	
 [section .data]
 
-tssd1	equ	300h
-pcblen	equ	tssd1
-tssd2	equ	8900h
+tssd1	equ	300h		; Mall för TSS descriptor
+tssd2	equ	8900h		
+pcblen	equ	tssd1		; Längd så PCB
 
 inittssd dd	t0desc
 
 runpcb	dd	0
 	
-npcbs	dd	0
-		
-readyf	dd	0
+readyf	dd	0		; Pekare till den berömda Ready-kön
 readyl	dd	0
 
-waitpcbf	dd	0
+waitpcbf	dd	0	; Waiting-kön
 waitpcbl	dd	0
 
-; [section .bss]
+procfunc	dd	sleep,loadtask,runtask
+procfuncs	equ ($-procfunc)/4
+	
+[section .bss]
 
-pcbs	times pcblen*4	db	0
+pcbs	times pcblen*10h	resb	1
 
-			
-; procfunc	dd	sleep
-; procfuncs	equ ($-procfunc)/4
 
 [section .text]
 
+procih:				; Avbrottshanterare 
+	push ds
+	push dword krnlds
+	pop ds
+	cmp bl,procfuncs
+	jae .l1
+	push ebx
+	and ebx,0ffh
+	call [procfuncs+ebx*4]
+	pop ebx
+.l1	pop ds
+	iret
+
+
+	;; Söv en process
+	;; Indata:	eax = antas hundradels sekunder som processen ska sova
+	
 sleep:	push eax
 	push ebx
 	push ecx
-	push edx
-	mov ebx,[readyf]
-	add eax,[ebx+tspriv]
-	mov [ebx+tscpriv],eax	; cpriv = priv + sleep
-	mov ecx,[ebx+tsnext]
-	mov [readyf],ecx
-	mov [ecx+tsprev],ecx	; Ta bort mig ur kön
-
+	cli
+	mov ebx,[runpcb]	; Flytta till waiting kön
+	mov [ebx+tssleep],eax	
 	mov eax,[waitpcbf]
-	cmp eax,[waitpcbl]
-	je .l2
-	mov [waitpcbf],ebx
-	mov [ebx+tsnext],eax
-	mov [eax+tsprev],ebx
-	mov [ebx+tsprev],ebx
-	jmp .l4
-.l2:	mov [waitpcbf],ebx
-	mov [waitpcbl],ebx
-	mov [ebx+tsprev],ebx
-	mov [ebx+tsnext],ebx
-.l4:	
-
-	mov ecx,[readyf]
-	mov eax,[ecx+tspriv]
-	mov [ecx+tscpriv],eax
-	mov eax,[ecx+tssel]
+	mov ecx,[eax+tsnext]
+	mov [eax+tsnext],ebx
+	mov [ecx+tsprev],ebx
+	mov [ebx+tsprev],eax
+	mov [ebx+tsnext],ecx
+	mov ebx,[readyf]
+	cmp ebx,[readyl]
+	jne .l1
+	mov dword [readyf],0
+	mov dword [readyl],0
+	jmp .l2
+.l1
+	mov eax,[ebx+tsnext]	; Hoppa till nästa process i ready-kön
+	mov [readyf],eax
+	mov [eax+tsprev],eax
+.l2
+	mov [runpcb],ebx
+	mov eax,[ebx+tssel]
 	mov [gdt+tsw+2],ax
-  	jmp tsw:0
-	pop edx
+	jmp tsw:0	 
+	sti
 	pop ecx
 	pop ebx
 	pop eax
 	ret
 
+	
+
+	;; Förbered en process för körning och lägg den i waiting kön
+	;; Indata:	esi = pekare till process
+	;; Utdata:	ebx = PCB
 loadtask:
 	push eax
 	mov ebx,pcbs
@@ -74,47 +90,34 @@ loadtask:
 	jmp .l1
 .l4:	call newgdtent
 	call addtss		; ebx=pcb ecx=codesel edx=datasel esi=task
-	mov eax,[waitpcbl]
-	cmp eax,[waitpcbf]
-	je .l2			; Waiting kön tom.
+
+	push ecx
+	mov eax,[waitpcbf]
+	mov ecx,[eax+tsnext]
 	mov [eax+tsnext],ebx
+	mov [ecx+tsprev],ebx
 	mov [ebx+tsprev],eax
-	mov [ebx+tsnext],ebx
-	mov [waitpcbl],ebx
-	jmp .l3
-.l2:	mov [ebx+tsprev],ebx
-	mov [ebx+tsnext],ebx
-	mov [waitpcbf],ebx
-	mov [waitpcbl],ebx
+	mov [ebx+tsnext],ecx
+	pop ecx
+	
 .l3:	mov dword [ebx+tsstat],0
 	pop eax
 	ret
 
-runtask:			; PCB i ebx
+	
+	;; Flytta en process från waiting till ready kön
+	;; och kör igång den.
+	;; Indata:	ebx = PCB
+runtask:
 	push eax
 	push ebx
 	push ecx
-	mov eax,[ebx+tsprev]
-	mov ecx,[ebx+tsnext]
-	cmp eax,ecx
-	jne .l00		; Ensam i kedjan?
-	mov dword [waitpcbf],0
-	mov dword [waitpcbl],0
-	jmp .l0
-.l00:	cmp eax,ebx		
-	jne .l01		; Först i kedjan?	
-	mov [waitpcbf],ecx
-	mov [ecx+tsprev],ecx
-	jmp .l0
-.l01:	cmp ecx,ebx
-	jne .l02		; Sist i kedjan?
-	mov [waitpcbl],eax
-	mov [eax+tsnext],eax
-	jmp .l0
-.l02:	mov [eax+tsnext],ecx
-	mov [ecx+tsprev],eax
-	
-.l0	mov eax,[ebx+tspriv]
+
+	mov eax,[ebx+tsnext]
+	mov ecx,[ebx+tsprev]
+	mov [eax+tsprev],ecx
+	mov [ecx+tsnext],eax
+	mov eax,[ebx+tspriv]
 	mov ecx,[readyf]
 	cmp ecx,0		; Tom?
 	jne .l1
@@ -145,12 +148,21 @@ runtask:			; PCB i ebx
 	pop eax
 	ret
 
+	
+	;; Initiera pcb-listan
+	;; och första pcb:n
 
 initpcbs:
 	push eax
 	push ebx
+	mov ebx,pcbs
+	xor eax,eax
+	mov ecx,pcblen*10h/4-4
+.l2	mov [ebx+ecx],eax
+	sub ecx,4
+	jns .l2
 	mov ebx,pcblen
-.l1:	mov dword [pcbs+ebx+tsstat],-1
+.l1	mov dword [pcbs+ebx+tsstat],-1
 	add ebx,pcblen
 	cmp ebx,pcblen*10h
 	jb .l1
@@ -161,19 +173,39 @@ initpcbs:
 	mov dword [readyl],0
 	mov [runpcb],ebx
 	mov dword [ebx+tsrun],1
-	mov dword [ebx+tscpriv],20
-	mov dword [ebx+tspriv],20
+	mov dword [ebx+tscpriv],10
+	mov dword [ebx+tspriv],10
 	mov dword [ebx+tssel],eax
 	mov dword [ebx+tsnext],ebx
 	mov dword [ebx+tsprev],ebx
 	mov dword [ebx+tsstat],1
 	mov dword [ebx+tsofs],0
 	mov dword [ebx+tsvscr],0
+	mov ebx,pcbs+pcblen
+	mov [waitpcbf],ebx
+	mov dword [ebx+tsnext],pcbs+pcblen*2
+	mov [ebx+tsprev],ebx
+	mov dword [ebx+tsstat],0
+	mov dword [ebx+tsrun],0
+	mov dword [ebx+tssleep],-1
+	mov ebx,pcbs+pcblen*2
+	mov [waitpcbl],ebx
+	mov dword [ebx+tsprev],pcbs+pcblen
+	mov dword [ebx+tsnext],ebx
+	mov dword [ebx+tsstat],0
+	mov dword [ebx+tsrun],0
+	mov dword [ebx+tssleep],-1
+	
 	pop ebx
 	pop eax
 	ret
 
-addtss:				; esi=taskptr, ecx=codesel, edx=datasel
+
+	;; skapa PCB och lägg in pekare till TSS:n i GDT:n
+	;; Indata:	esi = pekare till processen
+	;;		ecx = Kodselector
+	;;		edx = Dataselector
+addtss:	
 	push eax
 	push ebx
 	push ecx
@@ -199,8 +231,8 @@ addtss:				; esi=taskptr, ecx=codesel, edx=datasel
 	mov dword [ebx+tsgs],edx
 	mov dword [ebx+tsss],edx
 	mov dword [ebx+tsss0],krnlds
-	mov dword [ebx+tspriv],20
-	mov dword [ebx+tscpriv],20
+	mov dword [ebx+tspriv],5
+	mov dword [ebx+tscpriv],5
 	mov ecx,ebx
 	mov eax,tssd1
 	mov ebx,tssd2

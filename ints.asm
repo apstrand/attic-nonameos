@@ -12,10 +12,188 @@ tmrc	dd	10h
 tmrs	dd	0
 which	dd	0
 
-kbdbuf	times 40h db
-kbdbeg	dd	0
-kbdend	dd	0
 	
+
+[section .text]
+
+	;; Timeravbrottshanteraren
+	
+	;; Ritar lite streck i övre högra hörnet så man ser att den lever...
+	;; Går igenom waiting-kön och flyttar över processer som
+	;; ska köras till Ready-kön
+	;; Lägger den aktuella processen på rätt ställe i ready-kön
+	;; och hoppar till processen längs fram i ready-kön
+	
+		
+irq0:	push eax
+	push ebx
+	push ecx
+	push edx
+	push ds
+	mov eax,krnlds
+	mov ds,ax
+	
+  	dec dword [tmrc]
+  	jnz .l1
+	mov dword [tmrc],10h
+	mov eax,[tmrd+16]
+	inc dword [tmrd+16]
+	and eax,03h
+	mov eax,[tmrd+eax*4]	; ritar ut snurrande | i övre högra hörnet,
+	mov [0b80a0h+78*2],eax	; så man ser att datorn inte har totalhängt...
+	
+.l1	mov eax,[waitpcbf]
+	mov edx,[eax+tsnext]
+.lw	mov eax,edx
+	mov edx,[eax+tsnext]
+	inc dword [eax+tsttime]	; öka ttime (=total körtid) för alla
+	dec dword [eax+tssleep]	; processer i waiting-kön
+	jnz .ls			; Sovit klart?
+	mov dword [eax+tscpriv],-5
+	mov ebx,[eax+tsnext]	; om ja, lägg då in i ready-kön
+	mov ecx,[eax+tsprev]
+	mov [ebx+tsprev],ecx
+	mov [ecx+tsnext],ebx
+	cmp dword [readyf],0
+	jne .ls1
+	mov [readyf],eax
+	mov [readyl],eax
+	mov [eax+tsprev],eax
+	mov [eax+tsnext],eax
+	jmp .ls
+.ls1	mov ebx,[readyf]
+	mov [readyf],eax
+	mov [eax+tsprev],eax
+	mov [eax+tsnext],ebx
+	mov [ebx+tsprev],eax
+.ls
+	cmp edx,[waitpcbl]
+	jne near .lw
+
+	
+.l2	mov eax,[readyf]	; öka ttime och minska cpriv för alla
+	cmp eax,0		; processer i ready-kön
+	je .l3
+.lr	inc dword [eax+tsttime]
+	dec dword [eax+tscpriv]
+	cmp eax,[readyl]
+	je .l3
+	mov eax,[eax+tsnext]
+	jmp .lr
+
+.l3	mov ebx,[runpcb]
+	dec dword [ebx+tscpriv]	; Minska prioritet för aktiv process
+	cmp dword [readyf],0
+	je near .l20.1		; Är jag ensam?
+	cmp dword [ebx+tscpriv],0
+	jns near .l20.2		; Ingen annan som vill köra?
+
+.l100
+	mov ecx,[readyf]
+	cmp ecx,[readyl]
+	jne .l4			; Bara en process i ready-kön?
+	mov [readyf],ebx
+	mov [readyl],ebx
+	mov [ebx+tsprev],ebx
+	mov [ebx+tsnext],ebx
+	jmp .l12
+.l4	
+	mov eax,[ebx+tspriv]	; Går igenom ready-kön för att hitta 
+.l5	mov ecx,[ecx+tsnext]	; rätt ställe att skjuta in aktuell process
+	cmp ecx,[readyl]
+ 	je .l6
+	cmp [ecx+tscpriv],eax
+	jbe .l5
+	mov edx,[ecx+tsnext]
+	mov [ecx+tsnext],ebx
+	mov [edx+tsprev],ebx
+	mov [ebx+tsprev],ecx
+	mov [ebx+tsnext],edx
+	jmp .l10
+.l6	mov [ecx+tsnext],ebx
+	mov [readyl],ebx
+	mov [ebx+tsprev],ecx
+	mov [ebx+tsnext],ebx
+.l10	
+	mov ecx,[readyf]	; Tar bort första processen i kön...
+	mov ebx,[ecx+tsnext]
+	mov [readyf],ebx
+	mov [ebx+tsprev],ebx
+	
+.l12	mov [runpcb],ecx	; ...och förbereder att skifta till den
+	mov eax,[ecx+tspriv]
+	mov [ecx+tscpriv],eax
+	inc dword [ecx+tstime]
+	mov eax,[ecx+tssel]
+	mov [gdt+tsw+2],ax
+	mov al,20h		; Meddela PIC:n att jag är klar
+	out 20h,al
+	pop ds
+	pop edx
+	pop ecx
+	pop ebx
+ 	pop eax
+  	jmp tsw:0		; Hoppa till nästa process!
+	iret
+	
+.l20.1	mov eax,[ebx+tspriv]	; Om samma process ska fortsätta....
+	mov [ebx+tscpriv],eax
+.l20.2	inc dword [ebx+tstime]
+	mov al,20h
+ 	out 20h,al
+	pop ds
+	pop edx
+	pop ecx
+	pop ebx
+	pop eax
+	iret
+
+
+	
+	;; Tangentbordsavbrottshanterare
+	;; Fyller på kbdbuf och skiftar "skärm"
+	
+irq1:	push ds
+	push eax
+	mov eax,krnlds
+	mov ds,ax
+	push ebx
+	in al,60h		; Hämta scankod
+	cmp al,0e0h
+	jne .l2			; Utökad?
+	in al,60h		; om ja, läs in scankoden
+.l2	test al,80h
+	jnz .l1			; Hoppa över release koder.
+	cmp al,3bh		; <F1
+	jb .l3
+	cmp al,42h		; >F8
+	ja .l3
+	sub al,3bh
+	and eax,7
+	push edx
+	imul eax,80*25*2	; eax: F1=0 F2=4000 F3=8000 osv...
+	pop edx
+	call vidsscr		; F1-F8 skiftar "skärm"
+	jmp .l1
+.l3	mov ebx,[kbdend]
+	inc ebx
+	and ebx,03fh
+	cmp [kbdbeg],ebx
+	je .l1
+	mov [kbdend],ebx
+	mov [kbdbuf+ebx],al	; Lägg in scankoden i bufferten...
+.l1	mov al,20h
+	out 20h,al		; Färdig!
+	pop ebx
+	pop eax
+	pop ds
+	iret
+
+	
+dummyh:	
+	iret
+
+[section .data]
 
 exp0msg	db	'Divide Error',0
 exp1msg	db	'Debug Exception',0
@@ -51,139 +229,16 @@ ehes	db	'ES:  '
 ehfs	db	'FS:  '
 ehgs	db	'GS:  '
 ehss	db	'SS:  '
-	
 dummy	db	'     '	
 
+
+
+	
 [section .text]
-	
-irq0:	push eax
-	push ebx
-	push ecx
-	push edx
-	push ds
-	mov eax,krnlds
-	mov ds,ax
-	
-  	dec dword [tmrc]
-  	jnz .l1
-	mov dword [tmrc],10h
-	mov eax,[tmrd+16]
-	inc dword [tmrd+16]
-	and eax,03h
-	mov eax,[tmrd+eax*4]	; ritar ut snurrande | i övre högra hörnet,
-	mov [0b80a0h+78*2],eax	; så man ser att datorn inte har totalhängt...
-	
-.l1	mov eax,[waitpcbf]	
-	or eax,eax
-	jz .l2
-.lw	inc dword [eax+tsttime]	; öka ttime (=total körtid) för alla
-	dec dword [eax+tssleep]	; processer i waiting-kön
-	cmp eax,[waitpcbl]
-	je .l2
-	mov eax,[eax+tsnext]
-	jmp .lw
-	
-.l2	mov eax,[readyf]	; öka ttime och minska cpriv för alla
-	cmp eax,0
-	je .l3
-.lr	inc dword [eax+tsttime]	; processer i ready-kön
-	dec dword [eax+tscpriv]
-	cmp eax,[readyl]
-	je .l3
-	mov eax,[eax+tsnext]
-	jmp .lr
 
-.l3	mov ebx,[runpcb]
-	dec dword [ebx+tscpriv]	; Minska prioritet för aktiv process
-	cmp dword [readyf],0	; Är jag ensam?
-	je near .l20.1
-	cmp dword [ebx+tscpriv],0
-	jns near .l20.2
-
-.l100
-	mov ecx,[readyf]
-	cmp ecx,[readyl]
-	jne .l4
-	mov [readyf],ebx
-	mov [readyl],ebx
-	mov [ebx+tsprev],ebx
-	mov [ebx+tsnext],ebx
-	jmp .l12
-.l4	
-	mov eax,[ebx+tspriv]
-.l5	mov ecx,[ecx+tsnext]
-	cmp ecx,[readyl]
- 	je .l6			; Sist
-	cmp [ecx+tscpriv],eax
-	jbe .l5
-	mov edx,[ecx+tsnext]
-	mov [ecx+tsnext],ebx
-	mov [edx+tsprev],ebx
-	mov [ebx+tsprev],ecx
-	mov [ebx+tsnext],edx
-	jmp .l10
-.l6	mov [ecx+tsnext],ebx
-	mov [readyl],ebx
-	mov [ebx+tsprev],ecx
-	mov [ebx+tsnext],ebx
-.l10	
-	mov ecx,[readyf]
-	mov ebx,[ecx+tsnext]
-	mov [readyf],ebx
-	mov [ebx+tsprev],ebx
-	
-.l12	mov [runpcb],ecx
-	mov eax,[ecx+tspriv]
-	mov [ecx+tscpriv],eax
-	inc dword [ecx+tstime]
-	mov eax,[ecx+tssel]
-	mov [gdt+tsw+2],ax
-	mov al,20h
-	out 20h,al
-	pop ds
-	pop edx
-	pop ecx
-	pop ebx
- 	pop eax
-  	jmp tsw:0
-	iret
-	
-.l20.1	mov eax,[ebx+tspriv]
-	mov [ebx+tscpriv],eax
-.l20.2	inc dword [ebx+tstime]
-	mov al,20h
- 	out 20h,al
-	pop ds
-	pop edx
-	pop ecx
-	pop ebx
-	pop eax
-	iret
-
-irq1:	push ds
-	push eax
-	mov eax,krnlds
-	mov ds,ax
-	push ebx
-	in al,60h
-	mov ebx,[kbdend]
-	inc ebx
-	and ebx,03fh
-	cmp [kbdbeg],ebx
-	je .l1
-	mov [kbdend],ebx
-	mov [kbdbuf+ebx],al
-.l1	pop ebx
-	pop eax
-	pop ds
-	iret
+	;; Exception handling......
 
 	
-dummyh:	
-	iret
-
-
-
 exp0:	pushad
 	mov esi,exp0msg
 	call ehregs

@@ -22,18 +22,18 @@ task1:
 	mov edi,trn
 	mov ax,1000h
 	mov bl,1
-	int 42h
+	int 43h
 	mov esi,t1msg
 	mov bl,5
-	int 42h
+	int 43h
 	xor esi,esi
 	mov bl,4
 .l1:	mov al,[edi+esi]
-	int 42h
+	int 43h
 	mov ecx,100000h
 	loop $
 	mov al,8
-	int 42h
+	int 43h
 	inc esi
 	and esi,3
 	jmp .l1

@@ -1,9 +1,8 @@
 
 [section .data]
 
-vbusy:	db	0
 	
-vfunc:	dd vcls,vsetpos,vgetpos,vgetrpos,vputchar,vwstr,vbyte,vword,vdword,sleep
+vfunc:	dd vcls,vsetpos,vgetpos,vgetrpos,vputchar,vwstr,vbyte,vword,vdword
 vfuncs	equ	($-vfunc)/4
 					
 [section .text]
@@ -28,12 +27,13 @@ vfuncs	equ	($-vfunc)/4
 	;; 8 = Write Doubleword
 	;; 	eax = dword
 
+	
 vidih:				; Avbrotts hanterare för video funktioner
 	push ds
 	push dword krnlds
 	pop ds
 	cmp bl,[vfuncs]
-	ja .l1
+	jae .l1
 	push ebx
 	and ebx,0ffh
 	call [vfunc+ebx*4]
@@ -41,7 +41,23 @@ vidih:				; Avbrotts hanterare för video funktioner
 .l1:	pop ds
 	iret
 
-vcls:
+	
+vidsscr:			; Byt "skärm", eax = screenoffset
+	push ebx
+	push edx
+	mov bx,ax
+	mov dx,3d4h
+	mov al,0ch
+	mov ah,bh
+	out dx,ax
+	mov al,0dh
+	mov ah,bl
+	out dx,ax
+	pop edx
+	pop ebx
+	ret
+	
+vcls:				; Rensa skärmen
 	push eax
 	push ebx
 	push edx
@@ -56,15 +72,18 @@ vcls:
 	mov [edx+tsvpos],eax
 	mov [edx+tsvofs],eax
 	mov dx,3d4h
-	mov ax,0dh
-	out dx,ax
 	mov ax,0eh
+	out dx,ax
+	mov ax,0fh
 	out dx,ax
 	pop edx
 	pop ebx
 	pop eax
 	ret
 
+
+	;; Flyttar markören
+	
 vsetpos:			; ax = RRCC
 	push eax
 	push ebx
@@ -99,6 +118,7 @@ vgetpos:
 	mov eax,[eax+tsvpos]
 	ret
 
+	;; Läser av aktuell markörposition
 vgetrpos:			; returnerar:	ax = RRCC
 	push ebx
 	push edx
@@ -125,7 +145,9 @@ vgetrpos:			; returnerar:	ax = RRCC
 	pop edx
 	pop ebx
 	ret
+
 	
+	;; Skriv ut tecken
 vputchar:			; tecken i al
 	push eax
 	cmp al,8
@@ -157,7 +179,8 @@ vputchar:			; tecken i al
 	pop ebx
 	pop eax
 	ret
-	
+
+	;; Skriv ut ASCIIZ sträng
 vwstr:				; sträng i esi
 	push eax
 	mov eax,[runpcb]
@@ -170,6 +193,7 @@ vwstr:				; sträng i esi
 .l2:	pop eax
 	ret
 
+	;; Skriv ut en byte hexadecimalt
 vbyte:
 	push eax
 	xor ah,ah
@@ -189,6 +213,7 @@ vbyte:
 	pop eax
 	ret
 
+	;; Skriv ut ett Word hexadecimalt
 vword:
 	xchg ah,al
 	call vbyte
@@ -196,6 +221,7 @@ vword:
 	call vbyte
 	ret
 
+	;; Skriv ut ett DoubleWord hexadecimalt
 vdword:	
 	ror eax,16
 	call vword

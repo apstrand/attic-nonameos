@@ -8,9 +8,11 @@ mfuncs	equ	($-mfunc)/4
 memfr	dd	0
 membusy	dd	0
 
-memlst	dd	0,0
-	times	80h	dd	0,0
-memsize	dd	0,0
+[section .bss]
+	
+memlst	resd	2
+	times	100h	resd	2
+memsize	resd	2
 
 	
 [section .text]
@@ -55,20 +57,20 @@ memfrees:
 memprint:
 	mov bl,4
 	mov al,0ah
-	int 42h
+	int 43h
 	mov ecx,memlst
 	add ecx,8
 .l1:	mov eax,[ecx]
 	mov bl,8
-	int 42h
+	int 43h
 	mov bl,4
 	mov al,'-'
-	int 42h
+	int 43h
 	add ecx,4
 	cmp ecx,memsize
 	jb .l1
 	mov al,0ah
-	int 42h
+	int 43h
 	ret
 	
 	

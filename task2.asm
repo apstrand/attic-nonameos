@@ -19,22 +19,22 @@ cbeg:
 task2:	mov edi,trn
 	mov ax,1200h
 	mov bl,1
-	int 42h
+	int 43h
 	mov esi,t2msg
 	mov bl,5
- 	int 42h
+ 	int 43h
 	xor esi,esi
 .l1:	mov bl,4
 	mov al,[edi+esi]
-	int 42h
+	int 43h
 	mov ecx,100000h
 	loop $
 	mov eax,300
 	mov bl,9
-;  	int 42h	
+;  	int 43h	
 	mov bl,4
 	mov al,8
-	int 42h
+	int 43h
 	inc esi
 	and esi,3
 	jmp .l1

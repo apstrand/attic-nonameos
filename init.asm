@@ -11,17 +11,20 @@ idt2	equ	8e00h
 [section .text]
 
 
+	;; Kollar hur mycket minne som finns och 
+	;; uppdaterar minnes-variablerna...
+
 getmems:
 	mov ebx,100000h	
 	mov al,0a5h
 .l1:	mov [ebx],al
-	mov cl,[ebx]
-	cmp cl,al
-	jne .l2
+	mov cl,[ebx]		; Går igenom minne från 1M och uppåt
+	cmp cl,al		; Om läst data inte är lika med skriven
+	jne .l2			; data så är minnet slut (eller sönder)
 	add ebx,1024
 	jmp .l1
 .l2:	
-	mov ecx,104h
+	mov ecx,204h
 .l3:	mov dword [memlst+ecx],0
 	sub ecx,4
 	jnz .l3
@@ -81,9 +84,15 @@ initIDT:
 	mov edx,irq1
   	mov [idt+21h*8],dx
 
-	mov edx,vidih
-	mov [idt+42h*8],dx
+	mov edx,procih			; Avbrottshanterar för "publika" funktioner
+	mov [idt+42h*8],dx		; 42h Processhantering
 	or byte [idt+42h*8+5],60h
+	mov edx,vidih			; 43h Videorutiner
+	mov [idt+43h*8],dx
+	or byte [idt+43h*8+5],60h
+	mov edx,kbdih			; 44h Tangentbordsrutiner
+	mov [idt+44h*8],dx
+	or byte [idt+43h*8+5],60h
 	ret
 
 
@@ -94,7 +103,7 @@ init8253:			; Timeravbrott
 	out 40h,al
 	mov al,2eh
 	out 40h,al
- 	in al,21h		; irq 0 på
+ 	in al,21h		; irq 0 och 1 på
  	and al,11111100b
  	out 21h,al
 	ret	
@@ -131,8 +140,8 @@ init8259:			; mappa om hårdvaru-irq
 
 
 	
-enableA20:	
-	call    empty8042
+enableA20:			; Slår på A20 så man kan
+	call    empty8042	; adressera minnet över 1M
 	mov     al,0d1h
 	out     64h,al
 	call    empty8042
