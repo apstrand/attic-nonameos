@@ -27,7 +27,7 @@ memory:
 	stc
 	retf
 .ok:	push ds
-	push dword d0d
+	push dword kernds
 	pop ds
 .l1	cmp byte [membusy],1
 	je .l1
@@ -53,20 +53,20 @@ memfrees:
 memprint:
 	mov bl,4
 	mov al,0ah
-	call vid0:0
+	int 42h
 	mov ecx,memlst
 	add ecx,8
 .l1:	mov eax,[ecx]
 	mov bl,8
-	call vid0:0
+	int 42h
 	mov bl,4
 	mov al,'-'
-	call vid0:0
+	int 42h
 	add ecx,4
 	cmp ecx,memsize
 	jb .l1
 	mov al,0ah
-	call vid0:0
+	int 42h
 	ret
 	
 	

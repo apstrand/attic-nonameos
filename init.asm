@@ -50,7 +50,14 @@ initIDT:
 	mov edx,exp16
 	mov [idt+16*8],dx
 	mov edx,irq0
-  	mov [idt+20h*8],dx	
+  	mov [idt+20h*8],dx
+
+	mov edx,vidih
+	mov [idt+42h*8],dx
+	or byte [idt+42h*8+5],60h
+	mov edx,procih
+	mov [idt+43h*8],dx
+	or byte [idt+43h*8+5],60h
 	ret
 
 

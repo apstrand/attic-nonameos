@@ -1,35 +1,38 @@
 [bits 32]
 [include os.inc]
+[org 0h]
 	
 [section .data]
 dbeg:	
 t1msg:	db 'Hello World...',0
 trn:	db '-\|/'
 dlen	equ	$-dbeg
-	
+
+[section .bss]
+bbeg:
+		
 [section .text]
-[org 0h]
 cbeg:	
 	dd	task1,clen
- 	dd	t1msg,dlen
-	dd	0
-	dd	1024
+ 	dd	dbeg,dlen
+	dd	bbeg,0
+	dd	bbeg,1024
 task1:
-	mov edi,trn-dbeg
+	mov edi,trn
 	mov ax,1000h
 	mov bl,1
-	call vid3:0
+	int 42h
 	mov esi,t1msg
 	mov bl,5
- 	call vid3:0
+	int 42h
 	xor edx,edx
 	mov bl,4
 .l1:	mov al,[edi+edx]
-	call vid3:0
+	int 42h
 	mov ecx,100000h
 	loop $
 	mov al,8
-	call vid3:0
+	int 42h
 	inc dl
 	and dl,3
 	jmp .l1

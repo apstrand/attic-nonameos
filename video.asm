@@ -1,3 +1,4 @@
+
 [section .data]
 
 vbusy:	db	0
@@ -26,14 +27,28 @@ vfuncs	equ	($-vfunc)/4
 	;; 	ax = word
 	;; 8 = Write Doubleword
 	;; 	eax = dword
-	
+
+vidih:				; Interrupt handler för video funktioner
+	push ds
+	push dword kernds
+	pop ds
+	cmp bl,[vfuncs]
+	ja .l1
+	push ebx
+	and ebx,0ffh
+	call [vfunc+ebx*4]
+	pop ebx
+.l1:	pop ds
+	iret
+
+
 video3:				; Video skal för tasks (ds dpl=3)
 	cmp bl,vfuncs
 	jb .l1
 	stc
 	ret
 .l1:	push ds
-	push dword d0d
+	push dword kernds
 	pop ds
 .l2:	cmp byte [vbusy],1
 	je .l2

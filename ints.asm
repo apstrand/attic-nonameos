@@ -40,7 +40,7 @@ exp16msg:	db	'Coprocessor Error CS:EIP=',0
 irq0:	push eax
 	push ebx
 	push ds
-	mov eax,d0d
+	mov eax,kernds
 	mov ds,ax
   	dec dword [tmrc]
   	jnz .l1
@@ -59,11 +59,12 @@ irq0:	push eax
 	cmp eax,[ntask]
 	jbe .l2
 	xor eax,eax
-.l2:
-	mov ebx,[tsksel+eax*8+4]
+.l2:	mov ebx,[tsksel+eax*8+4]
 	cmp dword [ebx+tsrun],1
+	jne .l4
 	mov [runtsk],eax
-	mov eax,[tsksel+eax*8]
+	inc dword [ebx+tstime]
+ 	mov eax,[tsksel+eax*8]
 	mov [1000h+tsw+2],ax
 	pop ds
 	pop ebx
@@ -77,7 +78,7 @@ irq0:	push eax
 
 irq1:	push ds
 	push eax
-	mov eax,d0d
+	mov eax,kernds
 	mov ds,ax
 	push ebx
 	in al,60h
@@ -90,7 +91,7 @@ irq1:	push ds
 .l1:	pop ebx
 	pop eax
 	pop ds
-	ret
+	iret
 
 	
 dummyh:	
@@ -156,7 +157,7 @@ exp16:	mov esi,exp16msg
 	jmp cexp
 	
 
-cexp:	mov ax,d0d
+cexp:	mov ax,kernds
 	mov ds,ax
 	call vwstr
 	mov eax,[esp+4]
@@ -166,10 +167,3 @@ cexp:	mov ax,d0d
 	mov eax,[esp]
 	call vdword
 	hlt
-
-
-
-
-
-
-

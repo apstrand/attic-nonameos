@@ -1,17 +1,19 @@
 [bits 32]
-[inc os.inc]
-[section .data]
+[inc abs.asm]
 
 	;;	task struktur:
 	;;	00	text offset
 	;;	04	text längd
 	;;	08	data offset
-	;;	0C	data längd
-	;;	10	bss längd
-	;;	14	stack längd
-	;;	.
-	;;	.
-	;;	.
+	;;	0c	data längd
+	;;	10	bss offset
+	;;	14	bss längd
+	;;	18	stack offset
+	;;	1c	stack längd
+
+[inc os.inc]
+[section .data]
+
 
 
 		
@@ -44,7 +46,8 @@ idtptr	dw	07ffh
 	dd	idt
 
 lastsel dd	30h
-
+inkern	dd	0
+	
 msg1	db	'Running....',0ah,0
 msgl1	db	'Loading task 1...',0ah,0
 msgr1	db	'Running task 1...',0ah,0
@@ -54,7 +57,7 @@ msgr2	db	'Running task 2...',0ah,0
 
 [section .text]
 start:	
-	mov ax,d0d
+	mov ax,kernds
 	mov ds,ax
 	mov es,ax
 	mov fs,ax
@@ -71,10 +74,10 @@ start:
 	lidt [idtptr]
 	sti
 	mov bl,0
-	call vid0:0
+	int 42h
 	mov esi,msg1
 	mov bl,5
-	call vid0:0
+	int 42h
 
  	mov ecx,1000h
  	call memget
@@ -87,65 +90,69 @@ start:
 	call runtask
 	
    	mov ecx,1000h
-  	call memget
-   	mov edi,eax
-  	mov esi,endmark+1000h
-  	mov ecx,1000h
-  	rep movsb
-  	mov esi,eax
-  	call loadtask
-  	call runtask
+   	call memget
+    	mov edi,eax
+   	mov esi,endmark+1000h
+   	mov ecx,1000h
+   	rep movsb
+   	mov esi,eax
+   	call loadtask
+   	call runtask
 
+.l1:	mov ax,0700h
+	mov bl,1
+	int 42h
+  	mov eax,[tsksel+4]
+   	mov eax,[tstime+eax]
+	mov bl,8
+	int 42h
+	mov bl,4
+	mov al,0ah
+	int 42h
+	mov eax,[tsksel+12]
+	mov eax,[eax+tstime]
+	mov bl,8
+	int 42h
+	mov bl,4
+	mov al,0ah
+	int 42h
+	mov eax,[tsksel+20]
+	mov eax,[eax+tstime]
+	mov bl,8
+	int 42h
+	jmp .l1
 	jmp $
 
+	
 newgdtent:			; esi = pekare till task
 	push eax
 	push ebx
-	push esi
 	push edi
-
 	mov eax,esi
 	shl eax,16
-	mov ecx,[esi+4]
-	add ecx,[esi+10h]
+	mov ecx,[esi+04]
+	add ecx,[esi+0ch]
 	add ecx,[esi+14h]
+	add ecx,[esi+1ch]
 	mov ax,cx
-	mov ebx,c3desc
+	and ecx,000f0000h
+	mov ebx,esi
+	xor bx,bx
+	bswap ebx
+	ror ebx,8
+	or ebx,ecx
+	push ebx
+	or ebx,c3desc
 	call addgdtent
 	mov edi,edx
-	mov edx,[esi]
-	add edx,esi
-	shr edx,16
-	mov [1000h+edi+4],dl
-	mov [1000h+edi+7],dh
-	shr ecx,16
-	and cl,0fh
-	or [1000h+edi+6],cl	
-
-		
-	mov eax,[esi+8h]
-	add eax,esi
-	shl eax,16
-	mov ecx,[esi+0ch]
-	add ecx,[esi+10h]
-	add ecx,[esi+14h]
-	mov ax,cx
-	mov ebx,d3desc
+	pop ebx
+	or ebx,d3desc
 	call addgdtent
-	mov ebx,[esi+8]
-	add ebx,esi
-	shr ebx,16
-	mov [1000h+edx+4],bl
-	mov [1000h+edx+7],bh
-	shr ecx,16
-	and cl,0fh
-	or [1000h+edx+6],cl
 	mov ecx,edi
-	pop edi		
-	pop esi
+	pop edi
 	pop ebx
 	pop eax
-	ret
+	ret			; ecx=code selector edx=data selector
 	
 
 addgdtent:				; eax:ebx = descriptor
@@ -156,8 +163,9 @@ addgdtent:				; eax:ebx = descriptor
 	mov [lastsel],edx
 	ret			; returnerar selector i edx
 
+	
 [inc memory.asm]
-[inc job.asm]
+[inc proc.asm]
 [inc video.asm]
 [inc ints.asm]
 [inc kbd.asm]

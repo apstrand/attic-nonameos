@@ -1,4 +1,4 @@
-os:	init.asm ints.asm job.asm video.asm kernel.asm memory.asm os.inc
+os:	init.asm ints.asm proc.asm video.asm kernel.asm memory.asm abs.asm os.inc
 	nasm kernel.asm -o os
 
 boot:	boot.asm os.inc
