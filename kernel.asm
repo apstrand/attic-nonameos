@@ -86,7 +86,8 @@ start:
 	mov esi,eax
 	call loadtask
 	call runtask
-	jmp $
+
+	
    	mov ecx,1000h
    	call memget
     	mov edi,eax
@@ -95,24 +96,13 @@ start:
    	rep movsb
 	mov esi,eax
    	call loadtask
-   	call runtask
+;    	call runtask
 
-; 	mov ecx,1000000h
-; 	loop $
-	
-; 	mov ebx,[readyf]
-; 	add eax,[ebx+tspriv]
-; 	mov [ebx+tscpriv],eax	; cpriv = priv + sleep
-; 	mov ecx,[ebx+tsnext]
-; 	mov [readyf],ecx
-; 	mov [ecx+tsprev],ecx	; Ta bort mig ur kön
-; 	mov eax,[ecx+tspriv]
-; 	mov [ecx+tscpriv],eax
-; 	mov eax,[ecx+tssel]
-; 	mov [gdt+tsw+2],ax
-
-
-	
+	mov eax,[pcbs+tssel]
+	mov bl,8
+	int 42h
+	mov eax,[pcbs+tssel+300h]
+	int 42h
 	
 	jmp $
 

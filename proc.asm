@@ -39,19 +39,19 @@ sleep:	push eax
 	mov [readyf],ecx
 	mov [ecx+tsprev],ecx	; Ta bort mig ur kön
 
-; 	mov eax,[waitpcbf]
-; 	cmp eax,[waitpcbl]
-; 	je .l2
-; 	mov [waitpcbf],ebx
-; 	mov [ebx+tsnext],eax
-; 	mov [eax+tsprev],ebx
-; 	mov [ebx+tsprev],ebx
-; 	jmp .l4
-; .l2:	mov [waitpcbf],ebx
-; 	mov [waitpcbl],ebx
-; 	mov [ebx+tsprev],ebx
-; 	mov [ebx+tsnext],ebx
-; .l4:	
+	mov eax,[waitpcbf]
+	cmp eax,[waitpcbl]
+	je .l2
+	mov [waitpcbf],ebx
+	mov [ebx+tsnext],eax
+	mov [eax+tsprev],ebx
+	mov [ebx+tsprev],ebx
+	jmp .l4
+.l2:	mov [waitpcbf],ebx
+	mov [waitpcbl],ebx
+	mov [ebx+tsprev],ebx
+	mov [ebx+tsnext],ebx
+.l4:	
 
 	mov ecx,[readyf]
 	mov eax,[ecx+tspriv]
@@ -116,7 +116,7 @@ runtask:			; PCB i ebx
 	
 .l0	mov eax,[ebx+tspriv]
 	mov ecx,[readyf]
-        cmp ecx,0               ; Tom?
+	cmp ecx,0		; Tom?
 	jne .l1
 	mov [readyf],ebx
 	mov [readyl],ebx
@@ -157,12 +157,12 @@ initpcbs:
 	mov eax,[inittssd]
 	ltr ax
 	mov ebx,pcbs
-	mov [readyf],ebx
-	mov [readyl],ebx
+	mov dword [readyf],0
+	mov dword [readyl],0
 	mov [runpcb],ebx
 	mov dword [ebx+tsrun],1
-	mov dword [ebx+tscpriv],10
-	mov dword [ebx+tspriv],10
+	mov dword [ebx+tscpriv],20
+	mov dword [ebx+tspriv],20
 	mov dword [ebx+tssel],eax
 	mov dword [ebx+tsnext],ebx
 	mov dword [ebx+tsprev],ebx

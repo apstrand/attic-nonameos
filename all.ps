@@ -1,0 +1,2417 @@
+%!PS-Adobe-3.0
+%%Creator: A2ps version 4.4
+%%CreationDate: Sun Mar  9 10:04:08 1997
+%%Orientation: Landscape
+%%BoundingBox: 0 0 595 842
+%%Pages: (atend)
+%%DocumentData: Clean8Bit
+%%DocumentPaperSizes: A4
+%%DocumentFonts: Courier Courier-Bold Helvetica Helvetica-Bold
+%%EndComments
+% Copyright (c) 1993, 1994, Miguel Santana, M.Santana@frgu.bull.fr
+% Modified 1996, Yves Arrouye <Yves.Arrouye@marin.fdn.fr>
+
+/$a2psdict 100 dict def
+$a2psdict begin
+
+% General macros.
+/xdef {exch def} bind def
+/getfont {exch findfont exch scalefont} bind def
+
+% Set up ISO Latin 1 character encoding
+/reencodeISO {
+	dup dup findfont dup length dict begin
+	{ 1 index /FID ne { def }{ pop pop } ifelse
+	} forall
+	/Encoding ISOLatin1Encoding def
+	currentdict end definefont
+} def
+/Helvetica-Bold reencodeISO def
+/Helvetica reencodeISO def
+/Courier reencodeISO def
+/Courier-Bold reencodeISO def
+
+% Create Courier backspace font
+/backspacefont {
+    /Courier findfont dup length dict begin
+	{ % forall
+	    1 index /FID eq { pop pop } { def } ifelse
+	} forall
+	currentdict /UniqueID known { % if
+	    /UniqueID UniqueID 16#800000 xor def
+	} if
+	CharStrings length 1 add dict begin
+	    CharStrings { def } forall
+	    /backspace { -600 0 0 0 0 0 setcachedevice } bind def
+	    currentdict
+	end
+	/CharStrings exch def
+	/Encoding Encoding 256 array copy def
+	Encoding 8 /backspace put
+	currentdict
+    end
+    definefont pop
+} bind def
+
+% FUNCTIONS
+
+% Function filename: Initialize file printing.
+/fn
+{ /filenm xdef
+  /filenmwidth filenm stringwidth pop def
+  /filenmfont
+       filenmwidth fns gt
+       {
+	       filenmfontname
+	       fnfs fns mul filenmwidth div
+	     getfont
+       }
+       { sfnf }
+     ifelse
+  def
+} bind def
+
+% Function header: prints page header. no page
+% is passed as argument.
+/hp
+  { x sd get  y sd get hs sub 1 add  moveto
+    df setfont
+    gsave
+      x sd get y sd get moveto
+      0 hs 2 div neg rmoveto 
+      hs setlinewidth
+      0.95 setgray
+      pw 0 rlineto stroke
+    grestore
+    gsave
+      dfs hm rmoveto
+      d show				% date/hour
+    grestore
+    gsave
+      pnum cvs pop				% page pop up
+        pw (Page 999) stringwidth pop sub
+        hm
+	  rmoveto
+      (Page ) show pnum show		% page number
+    grestore
+    empty pnum copy pop
+    gsave
+      filenmfont setfont
+         fns filenm stringwidth pop sub 2 div dw add
+          bm 2 mul 
+        add 
+        hm
+      rmoveto
+        filenm show			% file name
+      grestore
+    } bind def
+
+% Function border: prints border page
+/border 
+{ x sd get y sd get moveto
+  gsave				% print four sides
+    0.7 setlinewidth		% of the square
+    pw 0 rlineto
+    0 ph neg rlineto
+    pw neg 0 rlineto
+    closepath stroke
+  grestore
+} bind def
+
+% Function hborder: completes border of the header.
+/hborder 
+{ gsave
+	0.7 setlinewidth
+	0 hs neg rmoveto
+	pw 0 rlineto
+	stroke
+  grestore
+} bind def
+
+% Function sheetnumber: prints the sheet number.
+/sn
+    { snx sny moveto
+      df setfont
+      pnum cvs
+	  dup stringwidth pop (0) stringwidth pop sub neg 0 rmoveto show
+      empty pnum copy pop
+    } bind def
+
+% Function loginprint: prints the login id of the requestor.
+/lgp
+    { lx ly moveto
+      df setfont
+      dup stringwidth pop neg 0 rmoveto show
+    } bind def
+
+% Function currentdate: prints the current date.
+/cd
+    { dx dy moveto
+      df setfont
+      (Printed: ) show
+      td show
+    } bind def
+
+% Function filename_footer: prints the file name at bottom of page.
+/fnf
+    { fnx fny moveto
+      df setfont
+      filenm center show
+    } bind def
+
+% Function center: centers text.
+/center
+    { dup stringwidth pop
+      2 div neg 0 rmoveto
+    } bind def
+
+% Function s: print a source line
+/s  { show
+      /y0 y0 bfs sub def
+      x0 y0 moveto
+    } bind def
+
+% Functions b and st: change to bold or standard font
+/b  { show
+      bdf setfont
+    } bind def
+/st { show
+      bf setfont
+    } bind def
+
+% Strings used to make easy printing numbers
+/pnum 12 string def
+/empty 12 string def
+
+% Global initializations
+
+/CourierBack backspacefont
+/filenmfontname /Helvetica-Bold def
+/inch {72 mul} bind def
+
+%
+% Meaning of some variables and functions (coded names)
+%
+%	twp:		twinpages?
+%	sd:		sheet side
+%	l:		line counter
+%	c:		column counter
+%	d:		date
+%	td:		current date (for today)
+%	lg:		login name
+%	fn:		filename printing function
+%	sn:		sheetnumber printing function
+%	cd:		current date printing function
+%	fnf:		filename footer printing function
+%	lgp:		login printing function
+%	hp:		header printing function
+%	y:		y coordinate for the logical page
+%	x:		x coordinate for the logical page
+%	sny:		y coordinate for the sheet number
+%	snx:		x coordinate for the sheet number
+%	dy:		y coordinate for the date
+%	dx:		x coordinate for the date
+%	ly:		y coordinate for the login
+%	lx:		x coordinate for the login
+%	scx:		x coordinate for the sheet center
+%	fny:		y coordinate for the filename (footer)
+%	fnx:		x coordinate for the filename (footer)
+%	fnfs:		filename font size
+%	bfs:		body font size
+%	dfs:		date font size
+%	bfs:		body font size
+%	df:		date font
+%	bf:		body font
+%	bdf:		bold font
+%	sfnf:		standard filename font
+%	dw:		date width
+%	pw:		page width
+%	sw:		sheet width
+%	ph:		page height
+%	sh:		sheet height
+%	hm:		header margin
+%	tm:		top margin
+%	bm:		body margin
+%	rm:		right margin
+%	lm:		left margin
+%	hs:		header size
+%	fns:		filename size
+
+% Initialize page description variables.
+/x0 0 def
+/y0 0 def
+/sh 842 def
+/sw 595 def
+/margin 1.4 inch def
+/rm margin 3 div def
+/lm margin 2 mul 3 div def
+/d () def
+/td (Mar  9 1997 10:04) def
+/lg (Printed by peter from eniac) def
+%%EndProlog
+
+%%PaperSize: A4
+%%BeginPaperSize: A4
+%%IncludeFeature: *PageSize A4
+%%EndPaperSize
+
+/docsave save def
+%%Page: 1 1
+/pagesave save def
+/twp false def
+/fnfs 15 def
+/dfs fnfs 0.8 mul def
+/df /Helvetica dfs getfont def
+/dw df setfont td stringwidth pop def
+/sfnf filenmfontname fnfs getfont def
+/hm fnfs 0.25 mul def
+/hs 0.0 def
+/bfs 6 def
+/bdf /Courier-Bold bfs getfont def
+/bm bfs 0.7 mul def
+/bf /CourierBack bfs getfont def
+/l 122 def
+/c 136 def
+/pw
+   bf setfont (0) stringwidth pop c mul bm dup add add
+   def
+/ph
+   bfs l mul bm dup add add hs add
+   def
+/fns
+      pw
+      fnfs 4 mul dw add (Page 999) stringwidth pop add
+    sub
+  def
+/tm margin twp {3} {2} ifelse div def
+/sd 0 def
+/x [ lm dup ] def
+/sny tm dfs 2 mul sub def
+/snx sw rm sub dfs sub def
+/dy sny def
+/dx lm def
+
+% Only one logical page
+/y [ sh tm sub dup ] def
+/scx sw 2 div def
+/fny dy def
+/fnx scx def
+/ly fnfs 2 div y sd get add def
+/lx snx def
+/d (Mar  9 1997 09:49) def
+(  ) fn
+/x0 x 0 get bm add def
+/y0 y 0 get bm bfs add 0 add sub def
+x0 y0 moveto
+bf setfont
+( [absolute 0]) s
+( tsblink resw    2) s
+( tsesp0  resd    1) s
+( tsss0   resw    2) s
+( tsesp1  resd    1) s
+( tsss1   resw    2) s
+( tsesp2  resd    1) s
+( tsss2   resw    2) s
+( tscr3   resd    1) s
+( tseip   resd    1) s
+( tseflags resd   1) s
+( tseax   resd    1) s
+( tsecx   resd    1) s
+( tsedx   resd    1) s
+( tsebx   resd    1) s
+( tsesp   resd    1) s
+( tsebp   resd    1) s
+( tsesi   resd    1) s
+( tsedi   resd    1) s
+( tses    resw    2) s
+( tscs    resw    2) s
+( tsss    resw    2) s
+( tsds    resw    2) s
+( tsfs    resw    2) s
+( tsgs    resw    2) s
+( tsldt   resw    2) s
+( tsio    resd    1) s
+( ) s
+( tsname  resb    20h) s
+( tsnum   resd    1) s
+( tsrun   resd    1) s
+( tstime  resd    1) s
+( tsttime resd    1) s
+( tsvofs  resd    1) s
+( tsvscr  resd    1) s
+( tsvpos  resd    1) s
+( tsofs   resd    1) s
+( tspriv  resd    1) s
+( tscpriv resd    1) s
+( tssleep resd    1) s
+( tssel   resd    1) s
+( tsnext  resd    1) s
+( tsprev  resd    1) s
+( tsstat  resd    1) s
+( ) s
+( ) s
+( ) s
+( ) s
+( ) s
+( ) s
+( [bits 16]) s
+( [org 0h]) s
+( boot:) s
+(         push word 7c0h) s
+(         pop ds) s
+(         xor ax,ax) s
+(         mov fs,ax) s
+(         xor si,si) s
+(         xor di,di) s
+(         mov ax,9000h) s
+(         mov es,ax) s
+(         mov ss,ax) s
+(         mov sp,0ff80h) s
+(         mov cx,256) s
+(         cld) s
+(         rep movsw) s
+(         jmp 9000h:go            ; Flytta bootkoden ur v\344gen, till 9000:0  ss:sp=9000:ff80) s
+( go:     mov si,msg1) s
+(         call print              ; Loading...) s
+(         lds si,[fs:78h]) s
+(         mov di,0ff00h) s
+(         mov cx,6) s
+(         rep movsw) s
+(         sub di,12) s
+(         mov ds,ax) s
+(         mov byte [di+4],36) s
+(         mov [fs:78h],di) s
+(         mov [fs:7ah],es         ; \304ndra antalet sektorer f\366r BIOS) s
+(         xor ah,ah) s
+(         xor dl,dl) s
+(         int 13h                 ; Reset FDC) s
+(         mov ax,4000h) s
+(         mov es,ax               ; L\344gg koden tillf\344lligt p\345 4000:0) s
+(         xor dx,dx) s
+(         mov cx,2) s
+(         xor bx,bx) s
+(         mov ax,0211h) s
+(         int 13h                 ; L\344s sektor 2 till 17, sp\345r 0, sida 0) s
+(         hlt) s
+(         mov ax,0211h) s
+(         int 13h) s
+(         hlt) s
+(         mov ax,0211h) s
+(         int 13h ) s
+(         push bx) s
+(         mov ax,0e2eh) s
+(         xor bh,bh) s
+(         int 10h) s
+(         pop bx) s
+(         add bx,17*512) s
+(         mov ax,0212h) s
+(         mov dh,1) s
+(         mov cx,1) s
+(         int 13h) s
+(         hlt) s
+(         mov ax,0212h) s
+(         int 13h                 ; L\344s sektor 1 till 18, sp\345r 0, sida 1) s
+(         push bx) s
+(         mov ax,0e2eh) s
+(         xor bh,bh) s
+(         int 10h) s
+(         pop bx) s
+(         mov dx,3f2h) s
+(         xor ax,ax) s
+(         out dx,al               ; D\366da motor) s
+(         cli) s
+(         mov es,ax) s
+(         mov ax,4000h) s
+(         mov ds,ax) s
+(         mov cx,-1) s
+(         xor si,si) s
+(         xor di,di) s
+/sd 0 def
+pagesave restore
+showpage
+%%Page: 2 2
+/pagesave save def
+/twp false def
+/fnfs 15 def
+/dfs fnfs 0.8 mul def
+/df /Helvetica dfs getfont def
+/dw df setfont td stringwidth pop def
+/sfnf filenmfontname fnfs getfont def
+/hm fnfs 0.25 mul def
+/hs 0.0 def
+/bfs 6 def
+/bdf /Courier-Bold bfs getfont def
+/bm bfs 0.7 mul def
+/bf /CourierBack bfs getfont def
+/l 122 def
+/c 136 def
+/pw
+   bf setfont (0) stringwidth pop c mul bm dup add add
+   def
+/ph
+   bfs l mul bm dup add add hs add
+   def
+/fns
+      pw
+      fnfs 4 mul dw add (Page 999) stringwidth pop add
+    sub
+  def
+/tm margin twp {3} {2} ifelse div def
+/sd 0 def
+/x [ lm dup ] def
+/sny tm dfs 2 mul sub def
+/snx sw rm sub dfs sub def
+/dy sny def
+/dx lm def
+
+% Only one logical page
+/y [ sh tm sub dup ] def
+/scx sw 2 div def
+/fny dy def
+/fnx scx def
+/ly fnfs 2 div y sd get add def
+/lx snx def
+/d (Mar  9 1997 09:49) def
+(  ) fn
+/x0 x 0 get bm add def
+/y0 y 0 get bm bfs add 0 add sub def
+x0 y0 moveto
+bf setfont
+(         rep movsb               ; Flytta kod till 0:0) s
+(         mov ax,0) s
+(         mov ds,ax) s
+(         mov ax,[0]) s
+(         mov bx,9000h) s
+(         mov ds,bx) s
+(         mov [gdt+2],ax) s
+(         lgdt [gdt]) s
+(         mov eax,1) s
+(         mov cr0,eax) s
+(         jmp 8:8) s
+(         ) s
+( print:  push ax) s
+(         push bx) s
+(         push ds) s
+(         push word 9000h) s
+(         pop ds) s
+(         mov ah,0eh) s
+(         xor bh,bh) s
+( .l1:    lodsb) s
+(         or al,al) s
+(         jz .l2) s
+(         int 10h) s
+(         jmp .l1) s
+( .l2:    pop ds) s
+(         pop bx) s
+(         pop ax) s
+(         ret) s
+(         ) s
+( ) s
+( msg1    db      'Loading...',0) s
+( ) s
+( gdt     dw      800h) s
+(         dd      0h) s
+( ) s
+( times 200h-$+boot db 0) s
+( ) s
+( ) s
+( ) s
+( ) s
+( ) s
+( ) s
+( ) s
+( [section .data]) s
+( idt     times 100h      dd 0,0) s
+(         ) s
+(         ) s
+( ) s
+( idt1    equ     dummyh+80000h) s
+( idt2    equ     8e00h) s
+( ) s
+(                 ) s
+( [section .text]) s
+( ) s
+( ) s
+( getmems:) s
+(         mov ebx,100000h ) s
+(         mov al,0a5h) s
+( .l1:    mov [ebx],al) s
+(         mov cl,[ebx]) s
+(         cmp cl,al) s
+(         jne .l2) s
+(         add ebx,1024) s
+(         jmp .l1) s
+( .l2:    ) s
+(         mov ecx,104h) s
+( .l3:    mov dword [memlst+ecx],0) s
+(         sub ecx,4) s
+(         jnz .l3) s
+(         mov [memsize],ebx) s
+(         mov [memfr],ebx) s
+(         mov dword [memsize+4],0) s
+(         mov dword [memlst],100000h) s
+(         mov dword [membusy],0) s
+(         ret) s
+(         ) s
+( initIDT:) s
+(         mov eax,idt1) s
+(         mov ebx,idt2) s
+(         xor ecx,ecx) s
+( .l1:    mov [idt+ecx],eax) s
+(         mov [idt+ecx+4],ebx) s
+(         add ecx,8) s
+(         cmp ecx,800h) s
+(         jb .l1) s
+(         ) s
+(         mov edx,exp0            ; Exception handlers p\345 int 0 till 20h) s
+(         mov [idt+0*8],dx) s
+(         mov edx,exp1) s
+(         mov [idt+1*8],dx) s
+(         mov edx,exp2) s
+(         mov [idt+2*8],dx) s
+(         mov edx,exp3) s
+(         mov [idt+3*8],dx) s
+(         mov edx,exp4) s
+(         mov [idt+4*8],dx) s
+(         mov edx,exp5) s
+(         mov [idt+5*8],dx) s
+(         mov edx,exp6) s
+(         mov [idt+6*8],dx) s
+(         mov edx,exp7) s
+(         mov [idt+7*8],dx) s
+(         mov edx,exp8) s
+(         mov [idt+8*8],dx) s
+(         mov edx,exp9) s
+(         mov [idt+9*8],dx) s
+(         mov edx,exp10) s
+(         mov [idt+10*8],dx) s
+(         mov edx,exp11) s
+(         mov [idt+11*8],dx) s
+(         mov edx,exp12) s
+(         mov [idt+12*8],dx) s
+(         mov edx,exp13) s
+(         mov [idt+13*8],dx) s
+(         mov edx,exp14) s
+(         mov [idt+14*8],dx) s
+(         mov edx,exp15) s
+(         mov [idt+15*8],dx) s
+(         mov edx,exp16) s
+(         mov [idt+16*8],dx) s
+(         mov edx,irq0) s
+(         mov [idt+20h*8],dx) s
+/sd 0 def
+pagesave restore
+showpage
+%%Page: 3 3
+/pagesave save def
+/twp false def
+/fnfs 15 def
+/dfs fnfs 0.8 mul def
+/df /Helvetica dfs getfont def
+/dw df setfont td stringwidth pop def
+/sfnf filenmfontname fnfs getfont def
+/hm fnfs 0.25 mul def
+/hs 0.0 def
+/bfs 6 def
+/bdf /Courier-Bold bfs getfont def
+/bm bfs 0.7 mul def
+/bf /CourierBack bfs getfont def
+/l 122 def
+/c 136 def
+/pw
+   bf setfont (0) stringwidth pop c mul bm dup add add
+   def
+/ph
+   bfs l mul bm dup add add hs add
+   def
+/fns
+      pw
+      fnfs 4 mul dw add (Page 999) stringwidth pop add
+    sub
+  def
+/tm margin twp {3} {2} ifelse div def
+/sd 0 def
+/x [ lm dup ] def
+/sny tm dfs 2 mul sub def
+/snx sw rm sub dfs sub def
+/dy sny def
+/dx lm def
+
+% Only one logical page
+/y [ sh tm sub dup ] def
+/scx sw 2 div def
+/fny dy def
+/fnx scx def
+/ly fnfs 2 div y sd get add def
+/lx snx def
+/d (Mar  9 1997 09:49) def
+(  ) fn
+/x0 x 0 get bm add def
+/y0 y 0 get bm bfs add 0 add sub def
+x0 y0 moveto
+bf setfont
+( ) s
+(         mov edx,vidih) s
+(         mov [idt+42h*8],dx) s
+(         or byte [idt+42h*8+5],60h) s
+( ;       mov edx,procih) s
+( ;       mov [idt+43h*8],dx) s
+( ;       or byte [idt+43h*8+5],60h) s
+(         ret) s
+( ) s
+( ) s
+( init8253:                       ; Timeravbrott) s
+(         mov al,34h              ; timer 0, mode 2, 16 bit) s
+(         out 43h,al) s
+(         mov al,9ch              ; 2e9c -> 100Hz) s
+(         out 40h,al) s
+(         mov al,2eh) s
+(         out 40h,al) s
+(         in al,21h               ; irq 0 p\345) s
+(         and al,11111110b) s
+(         out 21h,al) s
+(         ret     ) s
+(         ) s
+( init8259:                       ; mappa om h\345rdvaru-irq) s
+(         mov     al,11h          ; initialisera 8259 1 och 2) s
+(         out     20h,al) s
+(         call    delay) s
+(         out     0a0h,al) s
+(         call    delay) s
+(         mov     al,20h          ; irq 0 -> 20h ...) s
+(         out     21h,al) s
+(         call    delay) s
+(         mov     al,28h          ; irq 8 -> 28h ...) s
+(         out     0a1h,al) s
+(         call    delay) s
+(         mov     al,4            ; har en slav p\345 irq 2) s
+(         out     21h,al) s
+(         call    delay) s
+(         mov     al,2            ; slave sitter p\345 irq 2) s
+(         out     0a1h,al) s
+(         call    delay) s
+(         mov     al,1            ; b\345da 8086 mode) s
+(         out     21h,al) s
+(         call    delay) s
+(         out     0a1h,al) s
+(         call    delay) s
+(         mov     al,0ffh         ; Alla av) s
+(         out     0a1h,al) s
+(         call    delay) s
+(         mov     al,011111011b   ; Alla av utom 8259-2) s
+(         out     21h,al) s
+(         ret) s
+( ) s
+( ) s
+(         ) s
+( enableA20:      ) s
+(         call    empty8042) s
+(         mov     al,0d1h) s
+(         out     64h,al) s
+(         call    empty8042) s
+(         mov     al,0dfh) s
+(         out     60h,al) s
+(         call    empty8042) s
+(         ret) s
+( ) s
+(                 ) s
+( empty8042:      ) s
+(         call    delay) s
+(         in      al,64h) s
+(         test    al,1) s
+(         jz      noout) s
+(         call    delay) s
+(         in      al,60h) s
+(         jmp     empty8042) s
+( noout:  test    al,2) s
+(         jnz     empty8042) s
+(         ret) s
+( ) s
+(         ) s
+( delay:) s
+(         jmp .l1) s
+( .l1:    ret) s
+( ) s
+( [section .data]) s
+( ) s
+( ) s
+( tmrd:   dd      072f075ch) s
+(         dd      072d072dh) s
+(         dd      075c072fh) s
+(         dd      077c077ch) s
+(         dd      0) s
+(                 ) s
+( tmrc:   dd      10h) s
+( ) s
+( tmrs dd 0) s
+( which dd 0      ) s
+( ) s
+( kbdbuf: times 40h db) s
+( kbdbeg: dd      0) s
+( kbdend: dd      0) s
+(         ) s
+( ) s
+( exp0msg:        db      'Divide Error',0) s
+( exp1msg:        db      'Debug Exception',0) s
+( exp2msg:        db      'Non Maskable Interrupt',0) s
+( exp3msg:        db      'Breakpoint',0) s
+( exp4msg:        db      'Overflow',0) s
+( exp5msg:        db      'Bounds Check',0) s
+( exp6msg:        db      'Invalid Opcode',0) s
+( exp7msg:        db      'Coprocessor Not Availible',0) s
+( exp8msg:        db      'Double Fault',0) s
+( exp9msg:        db      'Coprocessor Segment Overrun',0) s
+( exp10msg:       db      'Invalid TSS',0) s
+( exp11msg:       db      'Segment Not Present',0) s
+( exp12msg:       db      'Stack Exception',0) s
+( exp13msg:       db      'General Protection Fault',0) s
+( exp14msg:       db      'Page Fault',0) s
+( exp15msg:       db      'Exception 15',0) s
+( exp16msg:       db      'Coprocessor Error',0) s
+( ) s
+( eheax:  db      'EAX: ') s
+( ehebx:  db      'EBX: ') s
+( ehecx:  db      'ECX: ') s
+/sd 0 def
+pagesave restore
+showpage
+%%Page: 4 4
+/pagesave save def
+/twp false def
+/fnfs 15 def
+/dfs fnfs 0.8 mul def
+/df /Helvetica dfs getfont def
+/dw df setfont td stringwidth pop def
+/sfnf filenmfontname fnfs getfont def
+/hm fnfs 0.25 mul def
+/hs 0.0 def
+/bfs 6 def
+/bdf /Courier-Bold bfs getfont def
+/bm bfs 0.7 mul def
+/bf /CourierBack bfs getfont def
+/l 122 def
+/c 136 def
+/pw
+   bf setfont (0) stringwidth pop c mul bm dup add add
+   def
+/ph
+   bfs l mul bm dup add add hs add
+   def
+/fns
+      pw
+      fnfs 4 mul dw add (Page 999) stringwidth pop add
+    sub
+  def
+/tm margin twp {3} {2} ifelse div def
+/sd 0 def
+/x [ lm dup ] def
+/sny tm dfs 2 mul sub def
+/snx sw rm sub dfs sub def
+/dy sny def
+/dx lm def
+
+% Only one logical page
+/y [ sh tm sub dup ] def
+/scx sw 2 div def
+/fny dy def
+/fnx scx def
+/ly fnfs 2 div y sd get add def
+/lx snx def
+/d (Mar  9 1997 09:49) def
+(  ) fn
+/x0 x 0 get bm add def
+/y0 y 0 get bm bfs add 0 add sub def
+x0 y0 moveto
+bf setfont
+( ehedx:  db      'EDX: ') s
+( ehesi:  db      'ESI: ') s
+( ehedi:  db      'EDI: ') s
+( ehebp:  db      'EBP: ') s
+(         ) s
+( ehesp:  db      'ESP: ') s
+( eheip:  db      'EIP: ') s
+( ehcs:   db      'CS:  ') s
+( ehds:   db      'DS:  ') s
+( ehes:   db      'ES:  ') s
+( ehfs:   db      'FS:  ') s
+( ehgs:   db      'GS:  ') s
+( ehss:   db      'SS:  ') s
+(         ) s
+(         ) s
+( ) s
+( [section .text]) s
+(         ) s
+( irq0:   push eax) s
+(         push ebx) s
+(         push ecx) s
+(         push ds) s
+(         mov eax,krnlds) s
+(         mov ds,ax) s
+(         dec dword [tmrc]) s
+(         jnz .l1) s
+(         mov dword [tmrc],10h) s
+(         mov eax,[tmrd+16]) s
+(         inc dword [tmrd+16]) s
+(         and eax,03h) s
+(         mov eax,[tmrd+eax*4]) s
+(         mov [0b80a0h+78*2],eax) s
+( .l1:    mov eax,[waitpcbf]) s
+(         or eax,eax) s
+(         jz .l2) s
+( .lw:    inc dword [eax+tsttime]) s
+(         cmp eax,[waitpcbl]) s
+(         je .l2) s
+(         mov eax,[eax+tsnext]) s
+(         jmp .lw) s
+( .l2:    ) s
+(         mov eax,[runpcbf]) s
+( .lr:    inc dword [eax+tsttime]) s
+(         dec dword [eax+tscpriv]) s
+(         cmp eax,[runpcbl]) s
+(         je .l3) s
+(         mov eax,[eax+tsnext]) s
+(         jmp .lr) s
+( .l3:    ) s
+(         mov ebx,[runpcbf]) s
+(         cmp ebx,[runpcbl]) s
+(         jne .l21) s
+(         jmp .l20.1) s
+( .l21:   cmp dword [ebx+tscpriv],0) s
+(         js .l20z) s
+(         jmp .l20.2) s
+( .l20z:  ) s
+(         mov eax,[ebx+tspriv]) s
+(         mov edx,[ebx+tsnext]) s
+(         mov ecx,ebx) s
+(         ) s
+( .l5:    mov ecx,[ecx+tsnext]) s
+(         cmp ecx,[runpcbl]) s
+(         je .l6                  ; Sist) s
+(         cmp [ecx+tscpriv],eax) s
+(         jbe .l5) s
+(         mov [runpcbf],edx       ; Infoga) s
+(         mov [edx+tsprev],edx) s
+(         mov edx,[ecx+tsnext]) s
+(         mov [ecx+tsnext],ebx) s
+(         mov [edx+tsprev],ebx) s
+(         mov [ebx+tsprev],ecx) s
+(         mov [ebx+tsnext],edx) s
+(         jmp .l10) s
+( .l6:    mov [ecx+tsnext],ebx) s
+(         mov [runpcbl],ebx) s
+(         mov [ebx+tsprev],ecx) s
+(         mov [ebx+tsnext],ebx) s
+(         mov [runpcbf],edx) s
+(         mov [edx+tsprev],edx) s
+( .l10:   mov ebx,[runpcbf]) s
+(         mov eax,[ebx+tspriv]) s
+(         mov [ebx+tscpriv],eax) s
+(         inc dword [ebx+tstime]) s
+(         mov eax,[ebx+tssel]) s
+(         mov [gdt+tsw+2],ax) s
+(         mov al,20h) s
+(         out 20h,al) s
+(         pop ds) s
+(         pop ecx) s
+(         pop ebx) s
+(         pop eax) s
+(         jmp tsw:0) s
+(         iret) s
+(         ) s
+( .l20.1: mov eax,[ebx+tspriv]) s
+(         mov [ebx+tscpriv],eax) s
+( .l20.2: inc dword [ebx+tstime]) s
+(         mov al,20h) s
+(         out 20h,al) s
+(         pop ds) s
+(         pop ecx) s
+(         pop ebx) s
+(         pop eax) s
+(         iret) s
+( ) s
+( irq1:   push ds) s
+(         push eax) s
+(         mov eax,krnlds) s
+(         mov ds,ax) s
+(         push ebx) s
+(         in al,60h) s
+(         mov ebx,[kbdend]) s
+(         inc ebx) s
+(         and ebx,03fh) s
+(         cmp [kbdbeg],ebx) s
+(         je .l1) s
+(         mov [kbdbuf+ebx],al) s
+( .l1:    pop ebx) s
+(         pop eax) s
+(         pop ds) s
+(         iret) s
+/sd 0 def
+pagesave restore
+showpage
+%%Page: 5 5
+/pagesave save def
+/twp false def
+/fnfs 15 def
+/dfs fnfs 0.8 mul def
+/df /Helvetica dfs getfont def
+/dw df setfont td stringwidth pop def
+/sfnf filenmfontname fnfs getfont def
+/hm fnfs 0.25 mul def
+/hs 0.0 def
+/bfs 6 def
+/bdf /Courier-Bold bfs getfont def
+/bm bfs 0.7 mul def
+/bf /CourierBack bfs getfont def
+/l 122 def
+/c 136 def
+/pw
+   bf setfont (0) stringwidth pop c mul bm dup add add
+   def
+/ph
+   bfs l mul bm dup add add hs add
+   def
+/fns
+      pw
+      fnfs 4 mul dw add (Page 999) stringwidth pop add
+    sub
+  def
+/tm margin twp {3} {2} ifelse div def
+/sd 0 def
+/x [ lm dup ] def
+/sny tm dfs 2 mul sub def
+/snx sw rm sub dfs sub def
+/dy sny def
+/dx lm def
+
+% Only one logical page
+/y [ sh tm sub dup ] def
+/scx sw 2 div def
+/fny dy def
+/fnx scx def
+/ly fnfs 2 div y sd get add def
+/lx snx def
+/d (Mar  9 1997 09:49) def
+(  ) fn
+/x0 x 0 get bm add def
+/y0 y 0 get bm bfs add 0 add sub def
+x0 y0 moveto
+bf setfont
+( ) s
+(         ) s
+( dummyh: ) s
+(         iret) s
+( ) s
+( ) s
+( ) s
+( exp0:   pushad) s
+(         mov esi,exp0msg) s
+(         call ehregs) s
+(         jmp $) s
+(         ) s
+( exp1:   pushad) s
+(         mov esi,exp1msg) s
+(         call ehregs) s
+(         jmp $) s
+(                 ) s
+( exp2:   pushad) s
+(         mov esi,exp2msg) s
+(         call ehregs) s
+(         jmp $) s
+(         ) s
+( exp3:   pushad) s
+(         mov esi,exp3msg) s
+(         call ehregs) s
+(         jmp $) s
+(         ) s
+( exp4:   pushad) s
+(         mov esi,exp4msg) s
+(         call ehregs) s
+(         jmp $) s
+(         ) s
+( exp5:   pushad) s
+(         mov esi,exp5msg) s
+(         call ehregs) s
+(         jmp $) s
+(         ) s
+( exp6:   pushad) s
+(         mov esi,exp6msg) s
+(         call ehregs) s
+(         jmp $) s
+(         ) s
+( exp7:   pushad) s
+(         mov esi,exp7msg) s
+(         call ehregs) s
+(         jmp $) s
+(         ) s
+( exp8:   add esp,4) s
+(         pushad) s
+(         mov esi,exp8msg) s
+(         call ehregs) s
+(         jmp $) s
+(         ) s
+( exp9:   pushad) s
+(         mov esi,exp9msg) s
+(         call ehregs) s
+(         jmp $) s
+(         ) s
+( exp10:  add esp,4) s
+(         pushad) s
+(         mov esi,exp10msg) s
+(         call ehregs) s
+(         jmp $) s
+(         ) s
+( exp11:  add esp,4) s
+(         pushad) s
+(         mov esi,exp11msg) s
+(         call ehregs) s
+(         jmp $) s
+(         ) s
+( exp12:  add esp,4) s
+(         pushad) s
+(         mov esi,exp12msg) s
+(         call ehregs) s
+(         jmp $) s
+(         ) s
+( exp13:  add esp,4) s
+(         pushad) s
+(         mov esi,exp13msg) s
+(         call ehregs) s
+(         jmp $) s
+(         ) s
+( exp14:  add esp,4) s
+(         pushad) s
+(         mov esi,exp14msg) s
+(         call ehregs) s
+(         jmp $) s
+(         ) s
+( exp15:  pushad) s
+(         mov esi,exp15msg) s
+(         call ehregs) s
+(         jmp $) s
+(         ) s
+( exp16:  pushad) s
+(         mov esi,exp16msg) s
+(         call ehregs) s
+(         jmp $) s
+(         ) s
+( ) s
+( ehregs: mov ax,krnlds) s
+(         mov ds,ax) s
+(         mov ah,0fh) s
+(         xor ebx,ebx) s
+( .l1:    mov al,[esi+ebx]) s
+(         or al,al) s
+(         jz .l2) s
+(         mov [0b8000h+ebx*2],ax) s
+(         inc ebx) s
+(         jmp .l1) s
+( ) s
+( .l2:) s
+(         mov eax,[esp+32]) s
+(         mov edi,160) s
+(         mov esi,eheax) s
+(         call ehdword) s
+(         mov eax,[esp+20]) s
+(         mov edi,160+30) s
+(         mov esi,ehebx) s
+(         call ehdword) s
+(         mov eax,[esp+28]) s
+(         mov esi,ehecx) s
+(         mov edi,160+60) s
+/sd 0 def
+pagesave restore
+showpage
+%%Page: 6 6
+/pagesave save def
+/twp false def
+/fnfs 15 def
+/dfs fnfs 0.8 mul def
+/df /Helvetica dfs getfont def
+/dw df setfont td stringwidth pop def
+/sfnf filenmfontname fnfs getfont def
+/hm fnfs 0.25 mul def
+/hs 0.0 def
+/bfs 6 def
+/bdf /Courier-Bold bfs getfont def
+/bm bfs 0.7 mul def
+/bf /CourierBack bfs getfont def
+/l 122 def
+/c 136 def
+/pw
+   bf setfont (0) stringwidth pop c mul bm dup add add
+   def
+/ph
+   bfs l mul bm dup add add hs add
+   def
+/fns
+      pw
+      fnfs 4 mul dw add (Page 999) stringwidth pop add
+    sub
+  def
+/tm margin twp {3} {2} ifelse div def
+/sd 0 def
+/x [ lm dup ] def
+/sny tm dfs 2 mul sub def
+/snx sw rm sub dfs sub def
+/dy sny def
+/dx lm def
+
+% Only one logical page
+/y [ sh tm sub dup ] def
+/scx sw 2 div def
+/fny dy def
+/fnx scx def
+/ly fnfs 2 div y sd get add def
+/lx snx def
+/d (Mar  9 1997 09:49) def
+(  ) fn
+/x0 x 0 get bm add def
+/y0 y 0 get bm bfs add 0 add sub def
+x0 y0 moveto
+bf setfont
+(         call ehdword) s
+(         mov eax,[esp+24]) s
+(         mov esi,ehedx) s
+(         mov edi,160+90) s
+(         call ehdword) s
+(         ) s
+(         mov eax,[esp+8]) s
+(         mov edi,320) s
+(         mov esi,ehesi) s
+(         call ehdword) s
+(         mov eax,[esp+4]) s
+(         mov edi,320+30) s
+(         mov esi,ehedi) s
+(         call ehdword) s
+(         mov eax,[esp+12]) s
+(         mov esi,ehebp) s
+(         mov edi,320+60) s
+(         call ehdword) s
+(         ) s
+(         xor eax,eax) s
+(         mov ax,ds) s
+(         mov edi,480) s
+(         mov esi,ehds) s
+(         call ehdword) s
+(         mov ax,es) s
+(         mov edi,480+30) s
+(         mov esi,ehes) s
+(         call ehdword) s
+(         mov ax,fs       ) s
+(         mov esi,ehfs) s
+(         mov edi,480+60) s
+(         call ehdword) s
+(         mov ax,gs       ) s
+(         mov esi,ehgs) s
+(         mov edi,480+90) s
+(         call ehdword) s
+(         ) s
+(         mov eax,[esp+48]) s
+(         mov edi,640) s
+(         mov esi,ehcs) s
+(         call ehdword) s
+(         mov eax,[esp+44]) s
+(         mov edi,640+30) s
+(         mov esi,eheip) s
+(         call ehdword) s
+(         mov eax,[runpcbf]) s
+(         mov esi,ehss) s
+(         mov edi,640+60) s
+(         call ehdword) s
+( ;       mov eax,[esp+56]) s
+( ;       mov esi,ehesp) s
+( ;       mov edi,640+90) s
+( ;       call ehdword) s
+(         ) s
+(         ret) s
+( ) s
+(         ) s
+(         ) s
+(                 ) s
+( ehdword: mov bh,0fh) s
+(         mov ecx,5) s
+( .l1:    mov bl,[esi]) s
+(         mov [0b8000h+edi],bx) s
+(         add edi,2) s
+(         inc esi) s
+(         loop .l1) s
+(         mov cl,4) s
+( .l3:    xor ebx,ebx) s
+(         shld ebx,eax,cl) s
+(         and bl,0fh) s
+(         add bl,30h) s
+(         cmp bl,39h) s
+(         jbe .l2) s
+(         add bl,7) s
+( .l2:    mov bh,0fh) s
+(         mov [0b8000h+edi],bx) s
+(         add edi,2) s
+(         add cl,4) s
+(         cmp cl,32) s
+(         jbe .l3) s
+(         mov eax,0f200f20h) s
+(         mov [0b8000h+edi],eax) s
+(         add edi,4) s
+(         ret) s
+( ) s
+( ) s
+( ) s
+( ) s
+( ) s
+( ) s
+( ) s
+( [section .data]) s
+( ) s
+( ) s
+( ) s
+( ) s
+( [section .text]) s
+( ) s
+( kbdget: push ebx                ; V\344ntar p\345 tangentnedslag och returnerar scankoden i al) s
+( .l1:    mov ebx,[kbdbeg]) s
+(         cmp [kbdend],ebx) s
+(         je .l1) s
+(         xor eax,eax) s
+(         mov al,[kbdbuf+ebx]) s
+(         inc dword [kbdbeg]) s
+(         and dword [kbdbeg],3fh) s
+(         pop ebx) s
+(         ret) s
+( ) s
+( kbdchk: push ebx                ; z = inga scankoder v\344ntar...) s
+(         mov ebx,[kbdend]) s
+(         cmp ebx,[kbdbeg]) s
+(         pop ebx) s
+(         ret) s
+( ) s
+(         ) s
+( [bits 32]) s
+( [inc abs.asm]) s
+( ) s
+(         ;;      task struktur:) s
+(         ;;      00      text offset) s
+(         ;;      04      text l\344ngd) s
+/sd 0 def
+pagesave restore
+showpage
+%%Page: 7 7
+/pagesave save def
+/twp false def
+/fnfs 15 def
+/dfs fnfs 0.8 mul def
+/df /Helvetica dfs getfont def
+/dw df setfont td stringwidth pop def
+/sfnf filenmfontname fnfs getfont def
+/hm fnfs 0.25 mul def
+/hs 0.0 def
+/bfs 6 def
+/bdf /Courier-Bold bfs getfont def
+/bm bfs 0.7 mul def
+/bf /CourierBack bfs getfont def
+/l 122 def
+/c 136 def
+/pw
+   bf setfont (0) stringwidth pop c mul bm dup add add
+   def
+/ph
+   bfs l mul bm dup add add hs add
+   def
+/fns
+      pw
+      fnfs 4 mul dw add (Page 999) stringwidth pop add
+    sub
+  def
+/tm margin twp {3} {2} ifelse div def
+/sd 0 def
+/x [ lm dup ] def
+/sny tm dfs 2 mul sub def
+/snx sw rm sub dfs sub def
+/dy sny def
+/dx lm def
+
+% Only one logical page
+/y [ sh tm sub dup ] def
+/scx sw 2 div def
+/fny dy def
+/fnx scx def
+/ly fnfs 2 div y sd get add def
+/lx snx def
+/d (Mar  9 1997 09:49) def
+(  ) fn
+/x0 x 0 get bm add def
+/y0 y 0 get bm bfs add 0 add sub def
+x0 y0 moveto
+bf setfont
+(         ;;      08      data offset) s
+(         ;;      0c      data l\344ngd) s
+(         ;;      10      bss offset) s
+(         ;;      14      bss l\344ngd) s
+(         ;;      18      stack offset) s
+(         ;;      1c      stack l\344ngd) s
+( ) s
+( [section .data]) s
+(                 ) s
+( gdt     dw 800h) s
+(         dd gdt) s
+(         dw      0) s
+( krnlcs  equ     $-gdt) s
+(         dd      0000ffffh       ; code descriptor) s
+(         dd      00cf9a00h) s
+( krnlds  equ     $-gdt) s
+(         dd      0000ffffh       ; data descriptor) s
+(         dd      00cf9200h) s
+( tsw     equ     $-gdt) s
+(         dw      0,t0desc        ; Task Gate) s
+(         dw      08500h,0) s
+( t0desc  equ     $-gdt) s
+(         dw      400h,pcbs       ; Task 0) s
+(         dd      00008900h) s
+( ) s
+(         ) s
+( c3desc  equ     0040fa00h) s
+( d3desc  equ     0040f200h) s
+(         ) s
+( ) s
+(         times 800h-$+gdt db 0) s
+( ) s
+( ) s
+( idtptr  dw      07ffh) s
+(         dd      idt) s
+( ) s
+( lastsel dd      30h) s
+( ) s
+(         ) s
+( msg1    db      'Running....',0ah,0) s
+( ) s
+( ) s
+( [section .text]) s
+(         ) s
+( start:) s
+(         dd      gdt) s
+(         dd      0) s
+(         mov ax,krnlds) s
+(         mov ds,ax) s
+(         mov es,ax) s
+(         mov fs,ax) s
+(         mov gs,ax) s
+(         mov ss,ax) s
+(         mov esp,10000h) s
+(         ) s
+(         call enableA20) s
+(         call getmems) s
+(         call init8259) s
+(         call init8253) s
+(         call initIDT) s
+(         call initpcbs) s
+(         lidt [idtptr]) s
+(         sti) s
+( ) s
+(         mov bl,0) s
+(         int 42h) s
+(         mov esi,msg1) s
+(         mov bl,5) s
+(         int 42h) s
+(         mov bl,4) s
+(         mov al,0ah) s
+(         int 42h) s
+( ) s
+(         mov ecx,1000h) s
+(         call memget) s
+(         mov edi,eax     ) s
+(         mov esi,dataend) s
+(         mov ecx,1000h) s
+(         rep movsb) s
+(         mov esi,eax) s
+(         call loadtask) s
+(         call runtask) s
+( ) s
+(         mov ecx,1000h) s
+(         call memget) s
+(         mov edi,eax) s
+(         mov esi,dataend+200h) s
+(         mov ecx,1000h) s
+(         rep movsb) s
+(         mov esi,eax) s
+(         call loadtask) s
+(         call runtask) s
+( ) s
+(         jmp $) s
+( ) s
+( newgdtent:                      ; esi = pekare till task) s
+(         push eax) s
+(         push ebx) s
+(         push edi) s
+(         mov eax,esi) s
+(         shl eax,16) s
+(         mov ecx,[esi+04]) s
+(         add ecx,[esi+0ch]) s
+(         add ecx,[esi+14h]) s
+(         add ecx,[esi+1ch]) s
+(         mov ax,cx) s
+(         and ecx,000f0000h) s
+(         mov ebx,esi) s
+(         xor bx,bx) s
+(         bswap ebx) s
+(         ror ebx,8) s
+(         or ebx,ecx) s
+(         push ebx) s
+(         or ebx,c3desc) s
+(         call addgdtent) s
+(         mov edi,edx) s
+(         pop ebx) s
+(         or ebx,d3desc) s
+(         call addgdtent) s
+(         mov ecx,edi) s
+(         pop edi) s
+(         pop ebx) s
+/sd 0 def
+pagesave restore
+showpage
+%%Page: 8 8
+/pagesave save def
+/twp false def
+/fnfs 15 def
+/dfs fnfs 0.8 mul def
+/df /Helvetica dfs getfont def
+/dw df setfont td stringwidth pop def
+/sfnf filenmfontname fnfs getfont def
+/hm fnfs 0.25 mul def
+/hs 0.0 def
+/bfs 6 def
+/bdf /Courier-Bold bfs getfont def
+/bm bfs 0.7 mul def
+/bf /CourierBack bfs getfont def
+/l 122 def
+/c 136 def
+/pw
+   bf setfont (0) stringwidth pop c mul bm dup add add
+   def
+/ph
+   bfs l mul bm dup add add hs add
+   def
+/fns
+      pw
+      fnfs 4 mul dw add (Page 999) stringwidth pop add
+    sub
+  def
+/tm margin twp {3} {2} ifelse div def
+/sd 0 def
+/x [ lm dup ] def
+/sny tm dfs 2 mul sub def
+/snx sw rm sub dfs sub def
+/dy sny def
+/dx lm def
+
+% Only one logical page
+/y [ sh tm sub dup ] def
+/scx sw 2 div def
+/fny dy def
+/fnx scx def
+/ly fnfs 2 div y sd get add def
+/lx snx def
+/d (Mar  9 1997 09:49) def
+(  ) fn
+/x0 x 0 get bm add def
+/y0 y 0 get bm bfs add 0 add sub def
+x0 y0 moveto
+bf setfont
+(         pop eax) s
+(         ret                     ; ecx=code selector edx=data selector) s
+(         ) s
+( ) s
+( addgdtent:                              ; eax:ebx = descriptor) s
+(         mov edx,[lastsel]) s
+(         add edx,8) s
+(         mov [gdt+edx],eax) s
+(         mov [gdt+edx+4],ebx) s
+(         mov [lastsel],edx) s
+(         ret                     ; returnerar selector i edx) s
+( ) s
+(         ) s
+( [inc memory.asm]) s
+( [inc proc.asm]) s
+( [inc video.asm]) s
+( [inc ints.asm]) s
+( [inc kbd.asm]) s
+( [inc init.asm]) s
+( ) s
+( [section .text]) s
+( codeend:) s
+( [section .data]) s
+( dataend:        ) s
+( [section .data]) s
+( ) s
+( mfunc   dd      memavail,memfrees,memget,memfree) s
+( mfuncs  equ     \($-mfunc\)/4) s
+( ) s
+( ) s
+(                 ) s
+( memfr   dd      0) s
+( membusy dd      0) s
+( ) s
+( memlst  dd      0,0) s
+(         times   80h     dd      0,0) s
+( memsize dd      0,0) s
+( ) s
+(         ) s
+( [section .text]) s
+( ) s
+(         ;; Memory functions) s
+(         ;; bl = function) s
+(         ;; 0 = Get availible memory) s
+(         ;; 1 = Get free memory) s
+(         ;; 2 = Allocate memory) s
+(         ;; 3 = Free memory) s
+(         ) s
+( ) s
+( memory:) s
+(         cmp bl,mfuncs) s
+(         jb .ok) s
+(         stc) s
+(         retf) s
+( .ok:    push ds) s
+(         push dword krnlds) s
+(         pop ds) s
+( .l1     cmp byte [membusy],1) s
+(         je .l1) s
+(         mov byte [membusy],1) s
+(         push ebx) s
+(         and ebx,0ffh) s
+(         shl ebx,2) s
+(         call [vfunc+ebx]) s
+(         pop ebx) s
+(         mov byte [membusy],0) s
+(         pop ds) s
+(         clc) s
+(         retf) s
+( ) s
+( memavail:) s
+(         mov eax,[memsize]) s
+(         ret) s
+( ) s
+( memfrees:) s
+(         mov eax,[memfr]) s
+(         ret) s
+( ) s
+( memprint:) s
+(         mov bl,4) s
+(         mov al,0ah) s
+(         int 42h) s
+(         mov ecx,memlst) s
+(         add ecx,8) s
+( .l1:    mov eax,[ecx]) s
+(         mov bl,8) s
+(         int 42h) s
+(         mov bl,4) s
+(         mov al,'-') s
+(         int 42h) s
+(         add ecx,4) s
+(         cmp ecx,memsize) s
+(         jb .l1) s
+(         mov al,0ah) s
+(         int 42h) s
+(         ret) s
+(         ) s
+(         ) s
+( memget:                         ; Storlek i ecx) s
+(         push ebx) s
+(         push edx) s
+(         push esi) s
+(         mov eax,memlst) s
+( .l2:    cmp dword [eax],0) s
+(         je .l1) s
+(         add eax,8) s
+(         cmp eax,memsize) s
+(         jae .err) s
+(         jmp .l2) s
+( .l1:    mov edx,eax) s
+( .l3:    add eax,8) s
+(         cmp dword [eax],0) s
+(         je .l3                  ; edx=f\366rsta lediga, eax=n\344sta ickelediga) s
+(         mov ebx,[edx-8]) s
+(         add ebx,[edx-4]         ; ebx=f\366rsta lediga minnesposition) s
+(         mov esi,[eax]) s
+(         sub esi,ecx) s
+(         cmp esi,ebx) s
+(         jb .l2) s
+(         mov eax,ebx) s
+(         mov [edx],eax) s
+(         mov [edx+4],ecx) s
+/sd 0 def
+pagesave restore
+showpage
+%%Page: 9 9
+/pagesave save def
+/twp false def
+/fnfs 15 def
+/dfs fnfs 0.8 mul def
+/df /Helvetica dfs getfont def
+/dw df setfont td stringwidth pop def
+/sfnf filenmfontname fnfs getfont def
+/hm fnfs 0.25 mul def
+/hs 0.0 def
+/bfs 6 def
+/bdf /Courier-Bold bfs getfont def
+/bm bfs 0.7 mul def
+/bf /CourierBack bfs getfont def
+/l 122 def
+/c 136 def
+/pw
+   bf setfont (0) stringwidth pop c mul bm dup add add
+   def
+/ph
+   bfs l mul bm dup add add hs add
+   def
+/fns
+      pw
+      fnfs 4 mul dw add (Page 999) stringwidth pop add
+    sub
+  def
+/tm margin twp {3} {2} ifelse div def
+/sd 0 def
+/x [ lm dup ] def
+/sny tm dfs 2 mul sub def
+/snx sw rm sub dfs sub def
+/dy sny def
+/dx lm def
+
+% Only one logical page
+/y [ sh tm sub dup ] def
+/scx sw 2 div def
+/fny dy def
+/fnx scx def
+/ly fnfs 2 div y sd get add def
+/lx snx def
+/d (Mar  9 1997 09:49) def
+(  ) fn
+/x0 x 0 get bm add def
+/y0 y 0 get bm bfs add 0 add sub def
+x0 y0 moveto
+bf setfont
+(         sub [memfr],eax) s
+(         pop esi) s
+(         pop edx) s
+(         pop ebx ) s
+(         clc) s
+(         ret                     ; pekare till minnesblock i eax) s
+( .err:   pop esi) s
+(         pop edx) s
+(         pop ebx) s
+(         stc) s
+(         ret) s
+(         ) s
+(         ) s
+( memfree:                        ; pekare till minnesblock i eax) s
+(         push ebx) s
+(         mov ebx,memlst) s
+( .l1:    add ebx,8) s
+(         cmp [ebx],eax) s
+(         jne .l1) s
+(         push eax) s
+(         mov eax,[ebx+4]) s
+(         add [memfr],eax) s
+(         pop eax) s
+(         mov dword [ebx],0) s
+(         mov dword [ebx+4],0) s
+(         pop ebx) s
+(         ret) s
+( ) s
+( ) s
+( ) s
+( ) s
+( ) s
+(         ) s
+( [section .data]) s
+( ) s
+( tssd1   equ     300h) s
+( pcblen  equ     tssd1) s
+( tssd2   equ     8900h) s
+( ) s
+( inittssd dd     t0desc) s
+( ) s
+( runpcbf dd      0) s
+( runpcbl dd      0) s
+( ) s
+( waitpcbf        dd      0) s
+( waitpcbl        dd      0) s
+( ) s
+( [section .bss]) s
+( ) s
+( pcbs    times pcblen*10h        resb    0) s
+( ) s
+(                         ) s
+( ; procfunc      dd      sleep) s
+( ; procfuncs     equ \($-procfunc\)/4) s
+( ) s
+( [section .text]) s
+( ) s
+( ; procih:       push ds) s
+( ;       push dword krnlds) s
+( ;       pop ds) s
+( ;       cmp bl,[procfuncs]) s
+( ;       ja .l1) s
+( ;       and ebx,0fh) s
+( ;       call [procfunc+ebx*4]) s
+( ; .l1:  pop ds) s
+( ;       iret) s
+(         ) s
+( ; sleep:        push eax                ; tid i eax \(i .01 sek\)) s
+( ;       push ebx) s
+( ;       push ecx) s
+( ;       mov ebx,[runpcbf]) s
+( ;       mov [ebx+tssleep],eax) s
+( ;       mov dword [ebx+tsstat],0) s
+( ;       pop ecx) s
+( ;       pop ebx) s
+( ;       pop eax) s
+( ;       ret) s
+( ) s
+( loadtask:) s
+(         push eax) s
+(         xor ebx,ebx) s
+( .l1:    cmp dword [pcbs+ebx+tsstat],-1) s
+(         je .l4) s
+(         add ebx,pcblen) s
+(         jmp .l1) s
+( .l4:    add ebx,pcbs) s
+(         call newgdtent) s
+(         call addtss             ; ebx=pcb ecx=codesel edx=datasel esi=task) s
+(         mov eax,[waitpcbl]) s
+(         cmp eax,[waitpcbf]) s
+(         je .l2                  ; Waiting k\366n tom.) s
+(         mov [eax+tsnext],ebx) s
+(         mov [ebx+tsprev],eax) s
+(         mov [ebx+tsnext],ebx) s
+(         mov [waitpcbl],ebx) s
+(         jmp .l3) s
+( .l2:    mov [ebx+tsprev],ebx) s
+(         mov [ebx+tsnext],ebx) s
+(         mov [waitpcbf],ebx) s
+(         mov [waitpcbl],ebx) s
+( .l3:    mov dword [ebx+tsstat],0) s
+(         pop eax) s
+(         ret) s
+( ) s
+( runtask:                        ; PCB i ebx) s
+(         push eax) s
+(         push ebx) s
+(         push ecx) s
+(         mov eax,[ebx+tsprev]) s
+(         mov ecx,[ebx+tsnext]) s
+(         cmp eax,ecx) s
+(         jne .l00                ; Ensam i kedjan?) s
+(         mov dword [waitpcbf],0) s
+(         mov dword [waitpcbl],0) s
+(         jmp .l0) s
+( .l00:   cmp eax,ebx             ) s
+(         jne .l01                ; F\366rst i kedjan?       ) s
+(         mov [waitpcbf],ecx) s
+(         mov [ecx+tsprev],ecx) s
+(         jmp .l0) s
+( .l01:   cmp ecx,ebx) s
+(         jne .l02                ; Sist i kedjan?) s
+/sd 0 def
+pagesave restore
+showpage
+%%Page: 10 10
+/pagesave save def
+/twp false def
+/fnfs 15 def
+/dfs fnfs 0.8 mul def
+/df /Helvetica dfs getfont def
+/dw df setfont td stringwidth pop def
+/sfnf filenmfontname fnfs getfont def
+/hm fnfs 0.25 mul def
+/hs 0.0 def
+/bfs 6 def
+/bdf /Courier-Bold bfs getfont def
+/bm bfs 0.7 mul def
+/bf /CourierBack bfs getfont def
+/l 122 def
+/c 136 def
+/pw
+   bf setfont (0) stringwidth pop c mul bm dup add add
+   def
+/ph
+   bfs l mul bm dup add add hs add
+   def
+/fns
+      pw
+      fnfs 4 mul dw add (Page 999) stringwidth pop add
+    sub
+  def
+/tm margin twp {3} {2} ifelse div def
+/sd 0 def
+/x [ lm dup ] def
+/sny tm dfs 2 mul sub def
+/snx sw rm sub dfs sub def
+/dy sny def
+/dx lm def
+
+% Only one logical page
+/y [ sh tm sub dup ] def
+/scx sw 2 div def
+/fny dy def
+/fnx scx def
+/ly fnfs 2 div y sd get add def
+/lx snx def
+/d (Mar  9 1997 09:49) def
+(  ) fn
+/x0 x 0 get bm add def
+/y0 y 0 get bm bfs add 0 add sub def
+x0 y0 moveto
+bf setfont
+(         mov [waitpcbl],eax) s
+(         mov [eax+tsnext],eax) s
+(         jmp .l0) s
+( .l02:   mov [eax+tsnext],ecx) s
+(         mov [ecx+tsprev],eax) s
+(         ) s
+( .l0     mov eax,[ebx+tspriv]) s
+(         mov ecx,[runpcbf]) s
+( .l1:    cmp [ecx+tsnext],ecx) s
+(         je .l3                  ; I slutet?) s
+(         cmp [ecx+tspriv],eax) s
+(         ja .l2                  ; H\366gre prioritet?) s
+(         mov ecx,[ecx+tsnext]) s
+(         jmp .l1                 ; N\344sta) s
+( .l2:    mov eax,[ecx+tsnext]    ; Infoga) s
+(         mov [ecx+tsnext],ebx) s
+(         mov [ebx+tsnext],eax) s
+(         mov [ebx+tsprev],ecx) s
+(         mov [eax+tsprev],ebx) s
+(         jmp .l4) s
+( .l3:    mov [ecx+tsnext],ebx    ; L\344gg till i slutet) s
+(         mov [ebx+tsprev],ecx) s
+(         mov [ebx+tsnext],ebx) s
+(         mov [runpcbl],ebx) s
+( .l4     mov dword [ebx+tsstat],1) s
+(         pop ecx) s
+(         pop ebx) s
+(         pop eax) s
+(         ret) s
+( ) s
+( ) s
+( initpcbs:) s
+(         push eax) s
+(         push ebx) s
+(         mov ebx,pcblen*4) s
+( .l1:    mov dword [pcbs+ebx+tsstat],-1) s
+(         sub ebx,pcblen) s
+(         jnz .l1) s
+(         mov eax,[inittssd]) s
+(         ltr ax) s
+(         mov ebx,pcbs) s
+(         mov [runpcbf],ebx) s
+(         mov [runpcbl],ebx) s
+(         mov dword [ebx+tsrun],1) s
+(         mov dword [ebx+tscpriv],10) s
+(         mov dword [ebx+tspriv],10) s
+(         mov dword [ebx+tssel],eax) s
+(         mov dword [ebx+tsnext],ebx) s
+(         mov dword [ebx+tsprev],ebx) s
+(         mov dword [ebx+tsstat],1) s
+(         mov dword [ebx+tsofs],0) s
+(         mov dword [ebx+tsvscr],0) s
+(         pop ebx) s
+(         pop eax) s
+(         ret) s
+( ) s
+( addtss:                         ; esi=taskptr, ecx=codesel, edx=datasel) s
+(         push eax) s
+(         push ebx) s
+(         push ecx) s
+(         push edx) s
+(         push edi) s
+(         mov edi,ecx) s
+(         mov eax,[esi+18h]) s
+(         add eax,[esi+1ch]) s
+(         mov dword [ebx+tsofs],esi) s
+(         mov esi,[esi]) s
+(         mov dword [ebx+tseip],esi) s
+(         mov dword [ebx+tsesp],eax) s
+(         mov eax,ebx) s
+(         add eax,pcblen) s
+(         mov dword [ebx+tsesp0],eax) s
+(         mov dword [ebx+tseflags],202h) s
+(         add edi,3) s
+(         add edx,3) s
+(         mov dword [ebx+tscs],edi) s
+(         mov dword [ebx+tsds],edx) s
+(         mov dword [ebx+tses],edx) s
+(         mov dword [ebx+tsfs],edx) s
+(         mov dword [ebx+tsgs],edx) s
+(         mov dword [ebx+tsss],edx) s
+(         mov dword [ebx+tsss0],krnlds) s
+(         mov dword [ebx+tspriv],20) s
+(         mov dword [ebx+tscpriv],20) s
+(         mov ecx,ebx) s
+(         mov eax,tssd1) s
+(         mov ebx,tssd2) s
+(         call addgdtent) s
+(         mov [ecx+tssel],edx) s
+(         mov [gdt+edx+2],cx) s
+(         bswap ecx) s
+(         mov [gdt+edx+4],ch) s
+(         mov [gdt+edx+7],cl) s
+(         mov [ecx+tssel],edx) s
+(         pop edi) s
+(         pop edx) s
+(         pop ecx) s
+(         pop ebx) s
+(         pop eax) s
+(         ret) s
+( ) s
+( ) s
+( ) s
+( [bits 32]) s
+( [org 0h]) s
+(         ) s
+( [section .data]) s
+( dbeg:   ) s
+( t1msg:  db 'Hello World...',0) s
+( trn:    db '-\\|/') s
+( dlen    equ     $-dbeg) s
+( ) s
+( ) s
+( [section .bss]) s
+( bbeg:) s
+( ) s
+(                 ) s
+( [section .text]) s
+( cbeg:   ) s
+(         dd      task1,clen) s
+(         dd      dbeg,dlen) s
+(         dd      bbeg,0) s
+/sd 0 def
+pagesave restore
+showpage
+%%Page: 11 11
+/pagesave save def
+/twp false def
+/fnfs 15 def
+/dfs fnfs 0.8 mul def
+/df /Helvetica dfs getfont def
+/dw df setfont td stringwidth pop def
+/sfnf filenmfontname fnfs getfont def
+/hm fnfs 0.25 mul def
+/hs 0.0 def
+/bfs 6 def
+/bdf /Courier-Bold bfs getfont def
+/bm bfs 0.7 mul def
+/bf /CourierBack bfs getfont def
+/l 122 def
+/c 136 def
+/pw
+   bf setfont (0) stringwidth pop c mul bm dup add add
+   def
+/ph
+   bfs l mul bm dup add add hs add
+   def
+/fns
+      pw
+      fnfs 4 mul dw add (Page 999) stringwidth pop add
+    sub
+  def
+/tm margin twp {3} {2} ifelse div def
+/sd 0 def
+/x [ lm dup ] def
+/sny tm dfs 2 mul sub def
+/snx sw rm sub dfs sub def
+/dy sny def
+/dx lm def
+
+% Only one logical page
+/y [ sh tm sub dup ] def
+/scx sw 2 div def
+/fny dy def
+/fnx scx def
+/ly fnfs 2 div y sd get add def
+/lx snx def
+/d (Mar  9 1997 09:49) def
+(  ) fn
+/x0 x 0 get bm add def
+/y0 y 0 get bm bfs add 0 add sub def
+x0 y0 moveto
+bf setfont
+(         dd      bbeg,1024) s
+( task1:) s
+(         mov edi,trn) s
+(         mov ax,1000h) s
+(         mov bl,1) s
+(         int 42h) s
+(         mov esi,t1msg) s
+(         mov bl,5) s
+(         int 42h) s
+(         xor esi,esi) s
+(         mov bl,4) s
+( .l1:    mov al,[edi+esi]) s
+(         int 42h) s
+(         mov ecx,100000h) s
+(         loop $) s
+(         mov al,8) s
+(         int 42h) s
+(         inc esi) s
+(         and esi,3) s
+(         jmp .l1) s
+(         ) s
+( clen    equ     $-cbeg) s
+( ) s
+( [section .data]) s
+(         times 200h-\(clen+dlen+2\) db 0) s
+( ) s
+( [bits 32]) s
+( [org 0h]) s
+(         ) s
+( [section .data]) s
+( dbeg:   ) s
+( t2msg:  db 'Hello World again...',0     ) s
+( trn:    db '-\\|/') s
+( dlen    equ     $-dbeg) s
+( ) s
+( [section .bss]) s
+( bbeg:) s
+(         ) s
+( [section .text]) s
+( cbeg:) s
+(         dd      task2,clen) s
+(         dd      dbeg,dlen) s
+(         dd      bbeg,0) s
+(         dd      bbeg,1024) s
+( task2:  mov edi,trn) s
+(         mov ax,1200h) s
+(         mov bl,1) s
+(         int 42h) s
+(         mov esi,t2msg) s
+(         mov bl,5) s
+(         int 42h) s
+(         xor esi,esi) s
+(         mov bl,4) s
+( .l1:    mov al,[edi+esi]) s
+(         int 42h) s
+(         mov ecx,100000h) s
+(         loop $) s
+(         mov al,8) s
+(         int 42h) s
+(         inc esi) s
+(         and esi,3) s
+(         jmp .l1) s
+(                 ) s
+( clen    equ     $-cbeg) s
+( ) s
+( ) s
+( ) s
+( [section .data]) s
+( ) s
+( vbusy:  db      0) s
+(         ) s
+( vfunc:  dd vcls,vsetpos,vgetpos,vgetrpos,vputchar,vwstr,vbyte,vword,vdword) s
+( vfuncs  equ     \($-vfunc\)/4) s
+(                                         ) s
+( [section .text]) s
+(         ) s
+(         ;; Video routines) s
+(         ;; bl = function) s
+(         ;; 0 = Clear Screen) s
+(         ;; 1 = Set cursorposition) s
+(         ;;      ax = RRCC) s
+(         ;; 2 = Get cursorposition) s
+(         ;;      ax = RRCC) s
+(         ;; 3 = Get real cursorposition) s
+(         ;;      ax = RRCC) s
+(         ;; 4 = Put char) s
+(         ;;      al = char) s
+(         ;; 5 = Write ASCIIZ string) s
+(         ;;      esi = string) s
+(         ;; 6 = Write Byte) s
+(         ;;      al = byte) s
+(         ;; 7 = Write Word) s
+(         ;;      ax = word) s
+(         ;; 8 = Write Doubleword) s
+(         ;;      eax = dword) s
+( ) s
+( vidih:                          ; Avbrotts hanterare f\366r video funktioner) s
+(         cli) s
+(         push ds) s
+(         push dword krnlds) s
+(         pop ds) s
+(         cmp bl,[vfuncs]) s
+(         ja .l1) s
+(         push ebx) s
+(         and ebx,0ffh) s
+(         call [vfunc+ebx*4]) s
+(         pop ebx) s
+( .l1:    pop ds) s
+( ) s
+(         iret) s
+( ) s
+( vcls:) s
+(         push eax) s
+(         push ebx) s
+(         push edx) s
+(         mov edx,[runpcbf]) s
+(         mov ebx,[edx+tsvscr]) s
+(         mov eax,80*25*2) s
+(         add ebx,0b8000h) s
+( .l1:    sub eax,4) s
+(         mov dword [ebx+eax],07200720h) s
+(         jnz .l1) s
+/sd 0 def
+pagesave restore
+showpage
+%%Page: 12 12
+/pagesave save def
+/twp false def
+/fnfs 15 def
+/dfs fnfs 0.8 mul def
+/df /Helvetica dfs getfont def
+/dw df setfont td stringwidth pop def
+/sfnf filenmfontname fnfs getfont def
+/hm fnfs 0.25 mul def
+/hs 0.0 def
+/bfs 6 def
+/bdf /Courier-Bold bfs getfont def
+/bm bfs 0.7 mul def
+/bf /CourierBack bfs getfont def
+/l 122 def
+/c 136 def
+/pw
+   bf setfont (0) stringwidth pop c mul bm dup add add
+   def
+/ph
+   bfs l mul bm dup add add hs add
+   def
+/fns
+      pw
+      fnfs 4 mul dw add (Page 999) stringwidth pop add
+    sub
+  def
+/tm margin twp {3} {2} ifelse div def
+/sd 0 def
+/x [ lm dup ] def
+/sny tm dfs 2 mul sub def
+/snx sw rm sub dfs sub def
+/dy sny def
+/dx lm def
+
+% Only one logical page
+/y [ sh tm sub dup ] def
+/scx sw 2 div def
+/fny dy def
+/fnx scx def
+/ly fnfs 2 div y sd get add def
+/lx snx def
+/d (Mar  9 1997 09:49) def
+(  ) fn
+/x0 x 0 get bm add def
+/y0 y 0 get bm bfs add 0 add sub def
+x0 y0 moveto
+bf setfont
+(         xor eax,eax) s
+(         mov [edx+tsvpos],eax) s
+(         mov [edx+tsvofs],eax) s
+(         mov dx,3d4h) s
+(         mov ax,0dh) s
+(         out dx,ax) s
+(         mov ax,0eh) s
+(         out dx,ax) s
+(         pop edx) s
+(         pop ebx) s
+(         pop eax) s
+(         ret) s
+( ) s
+( vsetpos:                        ; ax = RRCC) s
+(         push eax) s
+(         push ebx) s
+(         push edx) s
+(         push edi) s
+(         mov edi,[runpcbf]) s
+(         mov [edi+tsvpos],ax) s
+(         xor ebx,ebx) s
+(         mov bl,ah) s
+(         and eax,0ffh) s
+(         shl ebx,4) s
+(         lea ebx,[ebx*4+ebx]) s
+(         add ebx,eax) s
+(         mov ah,bh) s
+(         mov al,0eh) s
+(         mov edx,3d4h) s
+(         out dx,ax) s
+(         mov ah,bl) s
+(         mov al,0fh) s
+(         out dx,ax) s
+(         shl ebx,1) s
+(         mov [edi+tsvofs],ebx) s
+(         pop edi) s
+(         pop edx) s
+(         pop ebx) s
+(         pop eax) s
+(         ret) s
+( ) s
+(         ) s
+( vgetpos:) s
+(         mov eax,[runpcbf]) s
+(         mov eax,[eax+tsvpos]) s
+(         ret) s
+( ) s
+( vgetrpos:                       ; returnerar:   ax = RRCC) s
+(         push ebx) s
+(         push edx) s
+(         mov dx,3d4h) s
+(         mov al,0eh) s
+(         out dx,al) s
+(         inc dx) s
+(         in al,dx) s
+(         mov bh,al) s
+(         dec dx) s
+(         mov al,0fh) s
+(         out dx,al) s
+(         inc dx) s
+(         in al,dx) s
+(         mov ah,bh) s
+(         shl ax,1) s
+(         mov ebx,[runpcbf]) s
+(         mov [ebx+tsvofs],ax) s
+(         shr ax,1) s
+(         mov cl,80) s
+(         div cl) s
+(         xchg ah,al) s
+(         mov [ebx+tsvpos],ax) s
+(         pop edx) s
+(         pop ebx) s
+(         ret) s
+(         ) s
+( vputchar:                       ; tecken i al) s
+(         push eax) s
+(         cmp al,8) s
+(         jne .l1) s
+(         call vgetpos) s
+(         dec al) s
+(         call vsetpos) s
+(         pop eax) s
+(         ret) s
+( .l1:    cmp al,0ah) s
+(         jne .l2) s
+(         call vgetpos) s
+(         xor al,al) s
+(         inc ah) s
+(         call vsetpos) s
+(         pop eax) s
+(         ret) s
+( .l2:    push ebx) s
+(         push ecx) s
+(         mov ecx,[runpcbf]) s
+(         mov ebx,[ecx+tsvofs]) s
+(         add ebx,[ecx+tsvscr]) s
+(         mov ah,07h) s
+(         mov [0b8000h+ebx],ax) s
+(         call vgetpos) s
+(         inc al) s
+(         call vsetpos) s
+(         pop ecx) s
+(         pop ebx) s
+(         pop eax) s
+(         ret) s
+(         ) s
+( vwstr:                          ; str\344ng i esi) s
+(         push eax) s
+(         mov eax,[runpcbf]) s
+(         add esi,[eax+tsofs]) s
+( .l1:    lodsb) s
+(         or al,al) s
+(         jz .l2) s
+(         call vputchar) s
+(         jmp .l1) s
+( .l2:    pop eax) s
+(         ret) s
+( ) s
+( vbyte:) s
+(         push eax) s
+(         xor ah,ah) s
+(         ror eax,4) s
+/sd 0 def
+pagesave restore
+showpage
+%%Page: 13 13
+/pagesave save def
+/twp false def
+/fnfs 15 def
+/dfs fnfs 0.8 mul def
+/df /Helvetica dfs getfont def
+/dw df setfont td stringwidth pop def
+/sfnf filenmfontname fnfs getfont def
+/hm fnfs 0.25 mul def
+/hs 0.0 def
+/bfs 6 def
+/bdf /Courier-Bold bfs getfont def
+/bm bfs 0.7 mul def
+/bf /CourierBack bfs getfont def
+/l 122 def
+/c 136 def
+/pw
+   bf setfont (0) stringwidth pop c mul bm dup add add
+   def
+/ph
+   bfs l mul bm dup add add hs add
+   def
+/fns
+      pw
+      fnfs 4 mul dw add (Page 999) stringwidth pop add
+    sub
+  def
+/tm margin twp {3} {2} ifelse div def
+/sd 0 def
+/x [ lm dup ] def
+/sny tm dfs 2 mul sub def
+/snx sw rm sub dfs sub def
+/dy sny def
+/dx lm def
+
+% Only one logical page
+/y [ sh tm sub dup ] def
+/scx sw 2 div def
+/fny dy def
+/fnx scx def
+/ly fnfs 2 div y sd get add def
+/lx snx def
+/d (Mar  9 1997 09:49) def
+(  ) fn
+/x0 x 0 get bm add def
+/y0 y 0 get bm bfs add 0 add sub def
+x0 y0 moveto
+bf setfont
+(         add al,30h) s
+(         cmp al,39h) s
+(         jbe .l1) s
+(         add al,7) s
+( .l1:    call vputchar) s
+(         xor al,al) s
+(         rol eax,4) s
+(         add al,30h) s
+(         cmp al,39h) s
+(         jbe .l2) s
+(         add al,7) s
+( .l2:    call vputchar   ) s
+(         pop eax) s
+(         ret) s
+( ) s
+( vword:) s
+(         xchg ah,al) s
+(         call vbyte) s
+(         xchg ah,al) s
+(         call vbyte) s
+(         ret) s
+( ) s
+( vdword: ) s
+(         ror eax,16) s
+(         call vword) s
+(         ror eax,16) s
+(         call vword) s
+(         ret) s
+/sd 0 def
+pagesave restore
+showpage
+
+%%Trailer
+%%Pages: 13
+docsave restore end

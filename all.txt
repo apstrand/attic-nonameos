@@ -1,0 +1,1492 @@
+[absolute 0]
+tsblink	resw	2
+tsesp0	resd	1
+tsss0	resw	2
+tsesp1	resd	1
+tsss1	resw	2
+tsesp2	resd	1
+tsss2	resw	2
+tscr3	resd	1
+tseip	resd	1
+tseflags resd	1
+tseax	resd	1
+tsecx	resd	1
+tsedx	resd	1
+tsebx	resd	1
+tsesp	resd	1
+tsebp	resd	1
+tsesi	resd	1
+tsedi	resd	1
+tses	resw	2
+tscs	resw	2
+tsss	resw	2
+tsds	resw	2
+tsfs	resw	2
+tsgs	resw	2
+tsldt	resw	2
+tsio	resd	1
+
+tsname	resb	20h
+tsnum	resd	1
+tsrun	resd	1
+tstime	resd	1
+tsttime	resd	1
+tsvofs	resd	1
+tsvscr	resd	1
+tsvpos	resd	1
+tsofs	resd	1
+tspriv	resd	1
+tscpriv	resd	1
+tssleep	resd	1
+tssel	resd	1
+tsnext	resd	1
+tsprev	resd	1
+tsstat	resd	1
+
+
+
+
+
+
+[bits 16]
+[org 0h]
+boot:
+	push word 7c0h
+	pop ds
+	xor ax,ax
+	mov fs,ax
+	xor si,si
+	xor di,di
+	mov ax,9000h
+	mov es,ax
+	mov ss,ax
+	mov sp,0ff80h
+	mov cx,256
+	cld
+	rep movsw
+       	jmp 9000h:go		; Flytta bootkoden ur vägen, till 9000:0  ss:sp=9000:ff80
+go:	mov si,msg1
+	call print		; Loading...
+ 	lds si,[fs:78h]
+ 	mov di,0ff00h
+ 	mov cx,6
+ 	rep movsw
+ 	sub di,12
+ 	mov ds,ax
+ 	mov byte [di+4],36
+  	mov [fs:78h],di
+  	mov [fs:7ah],es		; Ändra antalet sektorer för BIOS
+	xor ah,ah
+	xor dl,dl
+	int 13h			; Reset FDC
+	mov ax,4000h
+	mov es,ax		; Lägg koden tillfälligt på 4000:0
+	xor dx,dx
+	mov cx,2
+	xor bx,bx
+	mov ax,0211h
+	int 13h			; Läs sektor 2 till 17, spår 0, sida 0
+	hlt
+	mov ax,0211h
+	int 13h
+	hlt
+	mov ax,0211h
+	int 13h	
+	push bx
+	mov ax,0e2eh
+	xor bh,bh
+	int 10h
+	pop bx
+	add bx,17*512
+	mov ax,0212h
+	mov dh,1
+	mov cx,1
+	int 13h
+	hlt
+	mov ax,0212h
+	int 13h			; Läs sektor 1 till 18, spår 0, sida 1
+	push bx
+	mov ax,0e2eh
+	xor bh,bh
+	int 10h
+	pop bx
+	mov dx,3f2h
+	xor ax,ax
+	out dx,al		; Döda motor
+	cli
+	mov es,ax
+	mov ax,4000h
+	mov ds,ax
+	mov cx,-1
+	xor si,si
+	xor di,di
+	rep movsb		; Flytta kod till 0:0
+	mov ax,0
+	mov ds,ax
+	mov ax,[0]
+	mov bx,9000h
+	mov ds,bx
+	mov [gdt+2],ax
+	lgdt [gdt]
+	mov eax,1
+	mov cr0,eax
+	jmp 8:8
+	
+print:	push ax
+	push bx
+	push ds
+	push word 9000h
+	pop ds
+	mov ah,0eh
+	xor bh,bh
+.l1:	lodsb
+	or al,al
+	jz .l2
+	int 10h
+	jmp .l1
+.l2:	pop ds
+	pop bx
+	pop ax
+	ret
+	
+
+msg1	db	'Loading...',0
+
+gdt	dw	800h
+	dd	0h
+
+times 200h-$+boot db 0
+
+
+
+
+
+
+
+[section .data]
+idt	times 100h	dd 0,0
+	
+	
+
+idt1	equ	dummyh+80000h
+idt2	equ	8e00h
+
+		
+[section .text]
+
+
+getmems:
+	mov ebx,100000h	
+	mov al,0a5h
+.l1:	mov [ebx],al
+	mov cl,[ebx]
+	cmp cl,al
+	jne .l2
+	add ebx,1024
+	jmp .l1
+.l2:	
+	mov ecx,104h
+.l3:	mov dword [memlst+ecx],0
+	sub ecx,4
+	jnz .l3
+	mov [memsize],ebx
+	mov [memfr],ebx
+	mov dword [memsize+4],0
+	mov dword [memlst],100000h
+	mov dword [membusy],0
+	ret
+	
+initIDT:
+	mov eax,idt1
+	mov ebx,idt2
+	xor ecx,ecx
+.l1:	mov [idt+ecx],eax
+	mov [idt+ecx+4],ebx
+	add ecx,8
+	cmp ecx,800h
+	jb .l1
+	
+	mov edx,exp0		; Exception handlers på int 0 till 20h
+	mov [idt+0*8],dx
+	mov edx,exp1
+	mov [idt+1*8],dx
+	mov edx,exp2
+	mov [idt+2*8],dx
+	mov edx,exp3
+	mov [idt+3*8],dx
+	mov edx,exp4
+	mov [idt+4*8],dx
+	mov edx,exp5
+	mov [idt+5*8],dx
+	mov edx,exp6
+	mov [idt+6*8],dx
+	mov edx,exp7
+	mov [idt+7*8],dx
+	mov edx,exp8
+	mov [idt+8*8],dx
+	mov edx,exp9
+	mov [idt+9*8],dx
+	mov edx,exp10
+	mov [idt+10*8],dx
+	mov edx,exp11
+	mov [idt+11*8],dx
+	mov edx,exp12
+	mov [idt+12*8],dx
+	mov edx,exp13
+	mov [idt+13*8],dx
+	mov edx,exp14
+	mov [idt+14*8],dx
+	mov edx,exp15
+	mov [idt+15*8],dx
+	mov edx,exp16
+	mov [idt+16*8],dx
+	mov edx,irq0
+  	mov [idt+20h*8],dx
+
+	mov edx,vidih
+	mov [idt+42h*8],dx
+	or byte [idt+42h*8+5],60h
+; 	mov edx,procih
+; 	mov [idt+43h*8],dx
+; 	or byte [idt+43h*8+5],60h
+	ret
+
+
+init8253:			; Timeravbrott
+ 	mov al,34h		; timer 0, mode 2, 16 bit
+ 	out 43h,al
+	mov al,9ch		; 2e9c -> 100Hz
+	out 40h,al
+	mov al,2eh
+	out 40h,al
+ 	in al,21h		; irq 0 på
+ 	and al,11111110b
+ 	out 21h,al
+	ret	
+	
+init8259:			; mappa om hårdvaru-irq
+	mov     al,11h		; initialisera 8259 1 och 2
+	out     20h,al
+	call    delay
+	out     0a0h,al
+	call    delay
+	mov     al,20h		; irq 0 -> 20h ...
+	out     21h,al
+	call    delay
+	mov     al,28h		; irq 8 -> 28h ...
+	out     0a1h,al
+	call    delay
+	mov     al,4		; har en slav på irq 2
+	out     21h,al
+	call    delay
+	mov     al,2		; slave sitter på irq 2
+	out     0a1h,al
+	call    delay
+	mov     al,1		; båda 8086 mode
+	out     21h,al
+	call    delay
+	out     0a1h,al
+	call    delay
+	mov     al,0ffh		; Alla av
+	out     0a1h,al
+	call    delay
+	mov     al,011111011b	; Alla av utom 8259-2
+	out     21h,al
+	ret
+
+
+	
+enableA20:	
+	call    empty8042
+	mov     al,0d1h
+	out     64h,al
+	call    empty8042
+	mov     al,0dfh
+	out     60h,al
+	call    empty8042
+	ret
+
+		
+empty8042:	
+	call    delay
+	in      al,64h
+	test    al,1
+	jz      noout
+	call    delay
+	in      al,60h
+	jmp     empty8042
+noout:	test    al,2
+	jnz     empty8042
+	ret
+
+	
+delay:
+	jmp .l1
+.l1:	ret
+
+[section .data]
+
+
+tmrd:	dd	072f075ch
+	dd	072d072dh
+	dd	075c072fh
+	dd	077c077ch
+	dd	0
+		
+tmrc:	dd	10h
+
+tmrs dd 0
+which dd 0	
+
+kbdbuf:	times 40h db
+kbdbeg:	dd	0
+kbdend:	dd	0
+	
+
+exp0msg:	db	'Divide Error',0
+exp1msg:	db	'Debug Exception',0
+exp2msg:	db	'Non Maskable Interrupt',0
+exp3msg:	db	'Breakpoint',0
+exp4msg:	db	'Overflow',0
+exp5msg:	db	'Bounds Check',0
+exp6msg:	db	'Invalid Opcode',0
+exp7msg:	db	'Coprocessor Not Availible',0
+exp8msg:	db	'Double Fault',0
+exp9msg:	db	'Coprocessor Segment Overrun',0
+exp10msg:	db	'Invalid TSS',0
+exp11msg:	db	'Segment Not Present',0
+exp12msg:	db	'Stack Exception',0
+exp13msg:	db	'General Protection Fault',0
+exp14msg:	db	'Page Fault',0
+exp15msg:	db	'Exception 15',0
+exp16msg:	db	'Coprocessor Error',0
+
+eheax:	db	'EAX: '
+ehebx:	db	'EBX: '
+ehecx:	db	'ECX: '
+ehedx:	db	'EDX: '
+ehesi:	db	'ESI: '
+ehedi:	db	'EDI: '
+ehebp:	db	'EBP: '
+	
+ehesp:	db	'ESP: '
+eheip:	db	'EIP: '
+ehcs:	db	'CS:  '
+ehds:	db	'DS:  '
+ehes:	db	'ES:  '
+ehfs:	db	'FS:  '
+ehgs:	db	'GS:  '
+ehss:	db	'SS:  '
+	
+	
+
+[section .text]
+	
+irq0:	push eax
+	push ebx
+	push ecx
+	push ds
+	mov eax,krnlds
+	mov ds,ax
+  	dec dword [tmrc]
+  	jnz .l1
+	mov dword [tmrc],10h
+	mov eax,[tmrd+16]
+	inc dword [tmrd+16]
+	and eax,03h
+	mov eax,[tmrd+eax*4]
+	mov [0b80a0h+78*2],eax
+.l1:	mov eax,[waitpcbf]
+	or eax,eax
+	jz .l2
+.lw:	inc dword [eax+tsttime]
+	cmp eax,[waitpcbl]
+	je .l2
+	mov eax,[eax+tsnext]
+	jmp .lw
+.l2:	
+	mov eax,[runpcbf]
+.lr:	inc dword [eax+tsttime]
+	dec dword [eax+tscpriv]
+	cmp eax,[runpcbl]
+	je .l3
+	mov eax,[eax+tsnext]
+	jmp .lr
+.l3:	
+	mov ebx,[runpcbf]
+	cmp ebx,[runpcbl]
+	jne .l21
+	jmp .l20.1
+.l21:	cmp dword [ebx+tscpriv],0
+	js .l20z
+	jmp .l20.2
+.l20z:	
+	mov eax,[ebx+tspriv]
+	mov edx,[ebx+tsnext]
+	mov ecx,ebx
+	
+.l5:	mov ecx,[ecx+tsnext]
+	cmp ecx,[runpcbl]
+ 	je .l6			; Sist
+	cmp [ecx+tscpriv],eax
+	jbe .l5
+	mov [runpcbf],edx	; Infoga
+	mov [edx+tsprev],edx
+	mov edx,[ecx+tsnext]
+	mov [ecx+tsnext],ebx
+	mov [edx+tsprev],ebx
+	mov [ebx+tsprev],ecx
+	mov [ebx+tsnext],edx
+	jmp .l10
+.l6:	mov [ecx+tsnext],ebx
+	mov [runpcbl],ebx
+	mov [ebx+tsprev],ecx
+	mov [ebx+tsnext],ebx
+	mov [runpcbf],edx
+	mov [edx+tsprev],edx
+.l10:	mov ebx,[runpcbf]
+	mov eax,[ebx+tspriv]
+	mov [ebx+tscpriv],eax
+	inc dword [ebx+tstime]
+	mov eax,[ebx+tssel]
+	mov [gdt+tsw+2],ax
+	mov al,20h
+	out 20h,al
+	pop ds
+	pop ecx
+	pop ebx
+ 	pop eax
+  	jmp tsw:0
+	iret
+	
+.l20.1:	mov eax,[ebx+tspriv]
+	mov [ebx+tscpriv],eax
+.l20.2:	inc dword [ebx+tstime]
+	mov al,20h
+ 	out 20h,al
+	pop ds
+	pop ecx
+	pop ebx
+	pop eax
+	iret
+
+irq1:	push ds
+	push eax
+	mov eax,krnlds
+	mov ds,ax
+	push ebx
+	in al,60h
+	mov ebx,[kbdend]
+	inc ebx
+	and ebx,03fh
+	cmp [kbdbeg],ebx
+	je .l1
+	mov [kbdbuf+ebx],al
+.l1:	pop ebx
+	pop eax
+	pop ds
+	iret
+
+	
+dummyh:	
+	iret
+
+
+
+exp0:	pushad
+	mov esi,exp0msg
+	call ehregs
+	jmp $
+	
+exp1:	pushad
+	mov esi,exp1msg
+	call ehregs
+	jmp $
+		
+exp2:	pushad
+	mov esi,exp2msg
+	call ehregs
+	jmp $
+	
+exp3:	pushad
+	mov esi,exp3msg
+	call ehregs
+	jmp $
+	
+exp4:	pushad
+	mov esi,exp4msg
+	call ehregs
+	jmp $
+	
+exp5:	pushad
+	mov esi,exp5msg
+	call ehregs
+	jmp $
+	
+exp6:	pushad
+	mov esi,exp6msg
+	call ehregs
+	jmp $
+	
+exp7:	pushad
+	mov esi,exp7msg
+	call ehregs
+	jmp $
+	
+exp8:	add esp,4
+	pushad
+	mov esi,exp8msg
+	call ehregs
+	jmp $
+	
+exp9:	pushad
+	mov esi,exp9msg
+	call ehregs
+	jmp $
+	
+exp10:	add esp,4
+	pushad
+	mov esi,exp10msg
+	call ehregs
+	jmp $
+	
+exp11:	add esp,4
+	pushad
+	mov esi,exp11msg
+	call ehregs
+	jmp $
+	
+exp12:	add esp,4
+	pushad
+	mov esi,exp12msg
+	call ehregs
+	jmp $
+	
+exp13:	add esp,4
+	pushad
+	mov esi,exp13msg
+	call ehregs
+	jmp $
+	
+exp14:	add esp,4
+	pushad
+	mov esi,exp14msg
+	call ehregs
+	jmp $
+	
+exp15:	pushad
+	mov esi,exp15msg
+	call ehregs
+	jmp $
+	
+exp16:	pushad
+	mov esi,exp16msg
+	call ehregs
+	jmp $
+	
+
+ehregs:	mov ax,krnlds
+	mov ds,ax
+	mov ah,0fh
+	xor ebx,ebx
+.l1:	mov al,[esi+ebx]
+	or al,al
+	jz .l2
+	mov [0b8000h+ebx*2],ax
+	inc ebx
+	jmp .l1
+
+.l2:
+	mov eax,[esp+32]
+	mov edi,160
+	mov esi,eheax
+	call ehdword
+	mov eax,[esp+20]
+	mov edi,160+30
+	mov esi,ehebx
+	call ehdword
+	mov eax,[esp+28]
+	mov esi,ehecx
+	mov edi,160+60
+	call ehdword
+	mov eax,[esp+24]
+	mov esi,ehedx
+	mov edi,160+90
+	call ehdword
+	
+	mov eax,[esp+8]
+	mov edi,320
+	mov esi,ehesi
+	call ehdword
+	mov eax,[esp+4]
+	mov edi,320+30
+	mov esi,ehedi
+	call ehdword
+	mov eax,[esp+12]
+	mov esi,ehebp
+	mov edi,320+60
+	call ehdword
+	
+	xor eax,eax
+	mov ax,ds
+	mov edi,480
+	mov esi,ehds
+	call ehdword
+	mov ax,es
+	mov edi,480+30
+	mov esi,ehes
+	call ehdword
+	mov ax,fs	
+	mov esi,ehfs
+	mov edi,480+60
+	call ehdword
+	mov ax,gs	
+	mov esi,ehgs
+	mov edi,480+90
+	call ehdword
+	
+	mov eax,[esp+48]
+	mov edi,640
+	mov esi,ehcs
+	call ehdword
+	mov eax,[esp+44]
+	mov edi,640+30
+	mov esi,eheip
+	call ehdword
+	mov eax,[runpcbf]
+	mov esi,ehss
+	mov edi,640+60
+	call ehdword
+; 	mov eax,[esp+56]
+; 	mov esi,ehesp
+; 	mov edi,640+90
+; 	call ehdword
+	
+	ret
+
+	
+	
+		
+ehdword: mov bh,0fh
+	mov ecx,5
+.l1:	mov bl,[esi]
+	mov [0b8000h+edi],bx
+	add edi,2
+	inc esi
+	loop .l1
+	mov cl,4
+.l3:	xor ebx,ebx
+	shld ebx,eax,cl
+	and bl,0fh
+	add bl,30h
+	cmp bl,39h
+	jbe .l2
+	add bl,7
+.l2:	mov bh,0fh
+	mov [0b8000h+edi],bx
+	add edi,2
+	add cl,4
+	cmp cl,32
+	jbe .l3
+	mov eax,0f200f20h
+	mov [0b8000h+edi],eax
+	add edi,4
+	ret
+
+
+
+
+
+
+
+[section .data]
+
+
+
+
+[section .text]
+
+kbdget:	push ebx		; Väntar på tangentnedslag och returnerar scankoden i al
+.l1:	mov ebx,[kbdbeg]
+	cmp [kbdend],ebx
+	je .l1
+	xor eax,eax
+	mov al,[kbdbuf+ebx]
+	inc dword [kbdbeg]
+	and dword [kbdbeg],3fh
+	pop ebx
+	ret
+
+kbdchk:	push ebx		; z = inga scankoder väntar...
+	mov ebx,[kbdend]
+	cmp ebx,[kbdbeg]
+	pop ebx
+	ret
+
+	
+[bits 32]
+[inc abs.asm]
+
+	;;	task struktur:
+	;;	00	text offset
+	;;	04	text längd
+	;;	08	data offset
+	;;	0c	data längd
+	;;	10	bss offset
+	;;	14	bss längd
+	;;	18	stack offset
+	;;	1c	stack längd
+
+[section .data]
+		
+gdt     dw 800h
+	dd gdt
+	dw      0
+krnlcs	equ	$-gdt
+	dd	0000ffffh	; code descriptor
+	dd	00cf9a00h
+krnlds	equ	$-gdt
+	dd	0000ffffh	; data descriptor
+	dd	00cf9200h
+tsw	equ	$-gdt
+	dw	0,t0desc	; Task Gate
+	dw	08500h,0
+t0desc	equ	$-gdt
+	dw	400h,pcbs	; Task 0
+	dd	00008900h
+
+	
+c3desc	equ	0040fa00h
+d3desc	equ	0040f200h
+	
+
+	times 800h-$+gdt db 0
+
+
+idtptr	dw	07ffh
+	dd	idt
+
+lastsel dd	30h
+
+	
+msg1	db	'Running....',0ah,0
+
+
+[section .text]
+	
+start:
+	dd	gdt
+	dd	0
+	mov ax,krnlds
+	mov ds,ax
+	mov es,ax
+	mov fs,ax
+	mov gs,ax
+	mov ss,ax
+	mov esp,10000h
+	
+	call enableA20
+ 	call getmems
+	call init8259
+	call init8253
+	call initIDT
+	call initpcbs
+	lidt [idtptr]
+	sti
+
+	mov bl,0
+	int 42h
+	mov esi,msg1
+	mov bl,5
+	int 42h
+	mov bl,4
+	mov al,0ah
+	int 42h
+
+ 	mov ecx,1000h
+ 	call memget
+ 	mov edi,eax	
+ 	mov esi,dataend
+ 	mov ecx,1000h
+ 	rep movsb
+	mov esi,eax
+	call loadtask
+	call runtask
+
+   	mov ecx,1000h
+   	call memget
+    	mov edi,eax
+   	mov esi,dataend+200h
+   	mov ecx,1000h
+   	rep movsb
+	mov esi,eax
+   	call loadtask
+   	call runtask
+
+	jmp $
+
+newgdtent:			; esi = pekare till task
+	push eax
+	push ebx
+	push edi
+	mov eax,esi
+	shl eax,16
+	mov ecx,[esi+04]
+	add ecx,[esi+0ch]
+	add ecx,[esi+14h]
+	add ecx,[esi+1ch]
+	mov ax,cx
+	and ecx,000f0000h
+	mov ebx,esi
+	xor bx,bx
+	bswap ebx
+	ror ebx,8
+	or ebx,ecx
+	push ebx
+	or ebx,c3desc
+	call addgdtent
+	mov edi,edx
+	pop ebx
+	or ebx,d3desc
+	call addgdtent
+	mov ecx,edi
+	pop edi
+	pop ebx
+	pop eax
+	ret			; ecx=code selector edx=data selector
+	
+
+addgdtent:				; eax:ebx = descriptor
+	mov edx,[lastsel]
+	add edx,8
+	mov [gdt+edx],eax
+	mov [gdt+edx+4],ebx
+	mov [lastsel],edx
+	ret			; returnerar selector i edx
+
+	
+[inc memory.asm]
+[inc proc.asm]
+[inc video.asm]
+[inc ints.asm]
+[inc kbd.asm]
+[inc init.asm]
+
+[section .text]
+codeend:
+[section .data]
+dataend:	
+[section .data]
+
+mfunc	dd	memavail,memfrees,memget,memfree
+mfuncs	equ	($-mfunc)/4
+
+
+		
+memfr	dd	0
+membusy	dd	0
+
+memlst	dd	0,0
+	times	80h	dd	0,0
+memsize	dd	0,0
+
+	
+[section .text]
+
+	;; Memory functions
+	;; bl = function
+	;; 0 = Get availible memory
+	;; 1 = Get free memory
+	;; 2 = Allocate memory
+	;; 3 = Free memory
+	
+
+memory:
+	cmp bl,mfuncs
+	jb .ok
+	stc
+	retf
+.ok:	push ds
+	push dword krnlds
+	pop ds
+.l1	cmp byte [membusy],1
+	je .l1
+	mov byte [membusy],1
+	push ebx
+	and ebx,0ffh
+	shl ebx,2
+	call [vfunc+ebx]
+	pop ebx
+	mov byte [membusy],0
+	pop ds
+	clc
+	retf
+
+memavail:
+	mov eax,[memsize]
+	ret
+
+memfrees:
+	mov eax,[memfr]
+	ret
+
+memprint:
+	mov bl,4
+	mov al,0ah
+	int 42h
+	mov ecx,memlst
+	add ecx,8
+.l1:	mov eax,[ecx]
+	mov bl,8
+	int 42h
+	mov bl,4
+	mov al,'-'
+	int 42h
+	add ecx,4
+	cmp ecx,memsize
+	jb .l1
+	mov al,0ah
+	int 42h
+	ret
+	
+	
+memget:				; Storlek i ecx
+	push ebx
+	push edx
+	push esi
+	mov eax,memlst
+.l2:	cmp dword [eax],0
+	je .l1
+	add eax,8
+	cmp eax,memsize
+	jae .err
+	jmp .l2
+.l1:	mov edx,eax
+.l3:	add eax,8
+	cmp dword [eax],0
+	je .l3			; edx=första lediga, eax=nästa ickelediga
+	mov ebx,[edx-8]
+	add ebx,[edx-4]		; ebx=första lediga minnesposition
+	mov esi,[eax]
+	sub esi,ecx
+	cmp esi,ebx
+	jb .l2
+	mov eax,ebx
+	mov [edx],eax
+	mov [edx+4],ecx
+	sub [memfr],eax
+	pop esi
+	pop edx
+	pop ebx	
+	clc
+	ret			; pekare till minnesblock i eax
+.err:	pop esi
+	pop edx
+	pop ebx
+	stc
+	ret
+	
+	
+memfree:			; pekare till minnesblock i eax
+	push ebx
+	mov ebx,memlst
+.l1:	add ebx,8
+	cmp [ebx],eax
+	jne .l1
+	push eax
+	mov eax,[ebx+4]
+	add [memfr],eax
+	pop eax
+	mov dword [ebx],0
+	mov dword [ebx+4],0
+	pop ebx
+	ret
+
+
+
+
+
+	
+[section .data]
+
+tssd1	equ	300h
+pcblen	equ	tssd1
+tssd2	equ	8900h
+
+inittssd dd	t0desc
+
+runpcbf	dd	0
+runpcbl	dd	0
+
+waitpcbf	dd	0
+waitpcbl	dd	0
+
+[section .bss]
+
+pcbs	times pcblen*10h	resb	0
+
+			
+; procfunc	dd	sleep
+; procfuncs	equ ($-procfunc)/4
+
+[section .text]
+
+; procih:	push ds
+; 	push dword krnlds
+; 	pop ds
+; 	cmp bl,[procfuncs]
+; 	ja .l1
+; 	and ebx,0fh
+; 	call [procfunc+ebx*4]
+; .l1:	pop ds
+; 	iret
+	
+; sleep:	push eax		; tid i eax (i .01 sek)
+; 	push ebx
+; 	push ecx
+; 	mov ebx,[runpcbf]
+; 	mov [ebx+tssleep],eax
+; 	mov dword [ebx+tsstat],0
+; 	pop ecx
+; 	pop ebx
+; 	pop eax
+; 	ret
+
+loadtask:
+	push eax
+	xor ebx,ebx
+.l1:	cmp dword [pcbs+ebx+tsstat],-1
+	je .l4
+	add ebx,pcblen
+	jmp .l1
+.l4:	add ebx,pcbs
+	call newgdtent
+	call addtss		; ebx=pcb ecx=codesel edx=datasel esi=task
+	mov eax,[waitpcbl]
+	cmp eax,[waitpcbf]
+	je .l2			; Waiting kön tom.
+	mov [eax+tsnext],ebx
+	mov [ebx+tsprev],eax
+	mov [ebx+tsnext],ebx
+	mov [waitpcbl],ebx
+	jmp .l3
+.l2:	mov [ebx+tsprev],ebx
+	mov [ebx+tsnext],ebx
+	mov [waitpcbf],ebx
+	mov [waitpcbl],ebx
+.l3:	mov dword [ebx+tsstat],0
+	pop eax
+	ret
+
+runtask:			; PCB i ebx
+	push eax
+	push ebx
+	push ecx
+	mov eax,[ebx+tsprev]
+	mov ecx,[ebx+tsnext]
+	cmp eax,ecx
+	jne .l00		; Ensam i kedjan?
+	mov dword [waitpcbf],0
+	mov dword [waitpcbl],0
+	jmp .l0
+.l00:	cmp eax,ebx		
+	jne .l01		; Först i kedjan?	
+	mov [waitpcbf],ecx
+	mov [ecx+tsprev],ecx
+	jmp .l0
+.l01:	cmp ecx,ebx
+	jne .l02		; Sist i kedjan?
+	mov [waitpcbl],eax
+	mov [eax+tsnext],eax
+	jmp .l0
+.l02:	mov [eax+tsnext],ecx
+	mov [ecx+tsprev],eax
+	
+.l0	mov eax,[ebx+tspriv]
+	mov ecx,[runpcbf]
+.l1:	cmp [ecx+tsnext],ecx
+	je .l3			; I slutet?
+	cmp [ecx+tspriv],eax
+	ja .l2			; Högre prioritet?
+	mov ecx,[ecx+tsnext]
+	jmp .l1			; Nästa
+.l2:	mov eax,[ecx+tsnext]	; Infoga
+	mov [ecx+tsnext],ebx
+	mov [ebx+tsnext],eax
+	mov [ebx+tsprev],ecx
+	mov [eax+tsprev],ebx
+	jmp .l4
+.l3:	mov [ecx+tsnext],ebx	; Lägg till i slutet
+	mov [ebx+tsprev],ecx
+	mov [ebx+tsnext],ebx
+	mov [runpcbl],ebx
+.l4	mov dword [ebx+tsstat],1
+	pop ecx
+	pop ebx
+	pop eax
+	ret
+
+
+initpcbs:
+	push eax
+	push ebx
+	mov ebx,pcblen*4
+.l1:	mov dword [pcbs+ebx+tsstat],-1
+	sub ebx,pcblen
+	jnz .l1
+	mov eax,[inittssd]
+	ltr ax
+	mov ebx,pcbs
+	mov [runpcbf],ebx
+	mov [runpcbl],ebx
+	mov dword [ebx+tsrun],1
+	mov dword [ebx+tscpriv],10
+	mov dword [ebx+tspriv],10
+	mov dword [ebx+tssel],eax
+	mov dword [ebx+tsnext],ebx
+	mov dword [ebx+tsprev],ebx
+	mov dword [ebx+tsstat],1
+	mov dword [ebx+tsofs],0
+	mov dword [ebx+tsvscr],0
+	pop ebx
+	pop eax
+	ret
+
+addtss:				; esi=taskptr, ecx=codesel, edx=datasel
+	push eax
+	push ebx
+	push ecx
+	push edx
+	push edi
+	mov edi,ecx
+	mov eax,[esi+18h]
+	add eax,[esi+1ch]
+	mov dword [ebx+tsofs],esi
+	mov esi,[esi]
+	mov dword [ebx+tseip],esi
+	mov dword [ebx+tsesp],eax
+	mov eax,ebx
+	add eax,pcblen
+	mov dword [ebx+tsesp0],eax
+	mov dword [ebx+tseflags],202h
+	add edi,3
+	add edx,3
+	mov dword [ebx+tscs],edi
+	mov dword [ebx+tsds],edx
+	mov dword [ebx+tses],edx
+	mov dword [ebx+tsfs],edx
+	mov dword [ebx+tsgs],edx
+	mov dword [ebx+tsss],edx
+	mov dword [ebx+tsss0],krnlds
+	mov dword [ebx+tspriv],20
+	mov dword [ebx+tscpriv],20
+	mov ecx,ebx
+	mov eax,tssd1
+	mov ebx,tssd2
+	call addgdtent
+	mov [ecx+tssel],edx
+	mov [gdt+edx+2],cx
+	bswap ecx
+	mov [gdt+edx+4],ch
+	mov [gdt+edx+7],cl
+	mov [ecx+tssel],edx
+	pop edi
+	pop edx
+	pop ecx
+	pop ebx
+	pop eax
+	ret
+
+
+
+[bits 32]
+[org 0h]
+	
+[section .data]
+dbeg:	
+t1msg:	db 'Hello World...',0
+trn:	db '-\|/'
+dlen	equ	$-dbeg
+
+
+[section .bss]
+bbeg:
+
+		
+[section .text]
+cbeg:	
+	dd	task1,clen
+ 	dd	dbeg,dlen
+	dd	bbeg,0
+	dd	bbeg,1024
+task1:
+	mov edi,trn
+	mov ax,1000h
+	mov bl,1
+	int 42h
+	mov esi,t1msg
+	mov bl,5
+	int 42h
+	xor esi,esi
+	mov bl,4
+.l1:	mov al,[edi+esi]
+	int 42h
+	mov ecx,100000h
+	loop $
+	mov al,8
+	int 42h
+	inc esi
+	and esi,3
+	jmp .l1
+	
+clen	equ	$-cbeg
+
+[section .data]
+	times 200h-(clen+dlen+2) db 0
+
+[bits 32]
+[org 0h]
+	
+[section .data]
+dbeg:	
+t2msg:	db 'Hello World again...',0	
+trn:	db '-\|/'
+dlen	equ	$-dbeg
+
+[section .bss]
+bbeg:
+	
+[section .text]
+cbeg:
+	dd	task2,clen
+ 	dd	dbeg,dlen
+	dd	bbeg,0
+	dd	bbeg,1024
+task2:	mov edi,trn
+	mov ax,1200h
+	mov bl,1
+	int 42h
+	mov esi,t2msg
+	mov bl,5
+ 	int 42h
+	xor esi,esi
+	mov bl,4
+.l1:	mov al,[edi+esi]
+	int 42h
+	mov ecx,100000h
+	loop $
+	mov al,8
+	int 42h
+	inc esi
+	and esi,3
+	jmp .l1
+		
+clen	equ	$-cbeg
+
+
+
+[section .data]
+
+vbusy:	db	0
+	
+vfunc:	dd vcls,vsetpos,vgetpos,vgetrpos,vputchar,vwstr,vbyte,vword,vdword
+vfuncs	equ	($-vfunc)/4
+					
+[section .text]
+	
+	;; Video routines
+	;; bl = function
+	;; 0 = Clear Screen
+	;; 1 = Set cursorposition
+	;; 	ax = RRCC
+	;; 2 = Get cursorposition
+	;; 	ax = RRCC
+	;; 3 = Get real cursorposition
+	;; 	ax = RRCC
+	;; 4 = Put char
+	;; 	al = char
+	;; 5 = Write ASCIIZ string
+	;; 	esi = string
+	;; 6 = Write Byte
+	;; 	al = byte
+	;; 7 = Write Word
+	;; 	ax = word
+	;; 8 = Write Doubleword
+	;; 	eax = dword
+
+vidih:				; Avbrotts hanterare för video funktioner
+	cli
+	push ds
+	push dword krnlds
+	pop ds
+	cmp bl,[vfuncs]
+	ja .l1
+	push ebx
+	and ebx,0ffh
+	call [vfunc+ebx*4]
+	pop ebx
+.l1:	pop ds
+
+	iret
+
+vcls:
+	push eax
+	push ebx
+	push edx
+	mov edx,[runpcbf]
+	mov ebx,[edx+tsvscr]
+	mov eax,80*25*2
+	add ebx,0b8000h
+.l1:	sub eax,4
+	mov dword [ebx+eax],07200720h
+	jnz .l1
+	xor eax,eax
+	mov [edx+tsvpos],eax
+	mov [edx+tsvofs],eax
+	mov dx,3d4h
+	mov ax,0dh
+	out dx,ax
+	mov ax,0eh
+	out dx,ax
+	pop edx
+	pop ebx
+	pop eax
+	ret
+
+vsetpos:			; ax = RRCC
+	push eax
+	push ebx
+	push edx
+	push edi
+	mov edi,[runpcbf]
+	mov [edi+tsvpos],ax
+	xor ebx,ebx
+	mov bl,ah
+	and eax,0ffh
+	shl ebx,4
+	lea ebx,[ebx*4+ebx]
+	add ebx,eax
+	mov ah,bh
+	mov al,0eh
+	mov edx,3d4h
+	out dx,ax
+	mov ah,bl
+	mov al,0fh
+	out dx,ax
+	shl ebx,1
+	mov [edi+tsvofs],ebx
+	pop edi
+	pop edx
+	pop ebx
+	pop eax
+	ret
+
+	
+vgetpos:
+	mov eax,[runpcbf]
+	mov eax,[eax+tsvpos]
+	ret
+
+vgetrpos:			; returnerar:	ax = RRCC
+	push ebx
+	push edx
+	mov dx,3d4h
+	mov al,0eh
+	out dx,al
+	inc dx
+	in al,dx
+	mov bh,al
+	dec dx
+	mov al,0fh
+	out dx,al
+	inc dx
+	in al,dx
+	mov ah,bh
+	shl ax,1
+	mov ebx,[runpcbf]
+	mov [ebx+tsvofs],ax
+	shr ax,1
+	mov cl,80
+	div cl
+	xchg ah,al
+	mov [ebx+tsvpos],ax
+	pop edx
+	pop ebx
+	ret
+	
+vputchar:			; tecken i al
+	push eax
+	cmp al,8
+	jne .l1
+	call vgetpos
+	dec al
+	call vsetpos
+	pop eax
+	ret
+.l1:	cmp al,0ah
+	jne .l2
+	call vgetpos
+	xor al,al
+	inc ah
+	call vsetpos
+	pop eax
+	ret
+.l2:	push ebx
+	push ecx
+	mov ecx,[runpcbf]
+	mov ebx,[ecx+tsvofs]
+	add ebx,[ecx+tsvscr]
+	mov ah,07h
+	mov [0b8000h+ebx],ax
+	call vgetpos
+	inc al
+	call vsetpos
+	pop ecx
+	pop ebx
+	pop eax
+	ret
+	
+vwstr:				; sträng i esi
+	push eax
+	mov eax,[runpcbf]
+	add esi,[eax+tsofs]
+.l1:	lodsb
+	or al,al
+	jz .l2
+	call vputchar
+	jmp .l1
+.l2:	pop eax
+	ret
+
+vbyte:
+	push eax
+	xor ah,ah
+	ror eax,4
+	add al,30h
+	cmp al,39h
+	jbe .l1
+	add al,7
+.l1:	call vputchar
+	xor al,al
+	rol eax,4
+	add al,30h
+	cmp al,39h
+	jbe .l2
+	add al,7
+.l2:	call vputchar	
+	pop eax
+	ret
+
+vword:
+	xchg ah,al
+	call vbyte
+	xchg ah,al
+	call vbyte
+	ret
+
+vdword:	
+	ror eax,16
+	call vword
+	ror eax,16
+	call vword
+	ret

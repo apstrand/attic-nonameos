@@ -1,56 +1,56 @@
 [section .data]
 
 
-tmrd:	dd	072f075ch
+tmrd	dd	072f075ch
 	dd	072d072dh
 	dd	075c072fh
 	dd	077c077ch
 	dd	0
 		
-tmrc:	dd	10h
+tmrc	dd	10h
 
 tmrs dd 0
 which dd 0	
 
-kbdbuf:	times 40h db
-kbdbeg:	dd	0
-kbdend:	dd	0
+kbdbuf	times 40h db
+kbdbeg	dd	0
+kbdend	dd	0
 	
 
-exp0msg:	db	'Divide Error',0
-exp1msg:	db	'Debug Exception',0
-exp2msg:	db	'Non Maskable Interrupt',0
-exp3msg:	db	'Breakpoint',0
-exp4msg:	db	'Overflow',0
-exp5msg:	db	'Bounds Check',0
-exp6msg:	db	'Invalid Opcode',0
-exp7msg:	db	'Coprocessor Not Availible',0
-exp8msg:	db	'Double Fault',0
-exp9msg:	db	'Coprocessor Segment Overrun',0
-exp10msg:	db	'Invalid TSS',0
-exp11msg:	db	'Segment Not Present',0
-exp12msg:	db	'Stack Exception',0
-exp13msg:	db	'General Protection Fault',0
-exp14msg:	db	'Page Fault',0
-exp15msg:	db	'Exception 15',0
-exp16msg:	db	'Coprocessor Error',0
+exp0msg	db	'Divide Error',0
+exp1msg	db	'Debug Exception',0
+exp2msg	db	'Non Maskable Interrupt',0
+exp3msg	db	'Breakpoint',0
+exp4msg	db	'Overflow',0
+exp5msg	db	'Bounds Check',0
+exp6msg	db	'Invalid Opcode',0
+exp7msg	db	'Coprocessor Not Availible',0
+exp8msg	db	'Double Fault',0
+exp9msg	db	'Coprocessor Segment Overrun',0
+exp10msg	db	'Invalid TSS',0
+exp11msg	db	'Segment Not Present',0
+exp12msg	db	'Stack Exception',0
+exp13msg	db	'General Protection Fault',0
+exp14msg	db	'Page Fault',0
+exp15msg	db	'Exception 15',0
+exp16msg	db	'Coprocessor Error',0
 
-eheax:	db	'EAX: '
-ehebx:	db	'EBX: '
-ehecx:	db	'ECX: '
-ehedx:	db	'EDX: '
-ehesi:	db	'ESI: '
-ehedi:	db	'EDI: '
-ehebp:	db	'EBP: '
+eheax	db	'EAX: '
+ehebx	db	'EBX: '
+ehecx	db	'ECX: '
+ehedx	db	'EDX: '
+ehesi	db	'ESI: '
+ehedi	db	'EDI: '
+ehebp	db	'EBP: '
 	
-ehesp:	db	'ESP: '
-eheip:	db	'EIP: '
-ehcs:	db	'CS:  '
-ehds:	db	'DS:  '
-ehes:	db	'ES:  '
-ehfs:	db	'FS:  '
-ehgs:	db	'GS:  '
-ehss:	db	'SS:  '
+ehesp	db	'ESP: '
+eheip	db	'EIP: '
+ehcs	db	'CS:  '
+ehds	db	'DS:  '
+ehes	db	'ES:  '
+ehfs	db	'FS:  '
+ehgs	db	'GS:  '
+ehss	db	'SS:  '
 	
 	
 
@@ -62,66 +62,79 @@ irq0:	push eax
 	push ds
 	mov eax,krnlds
 	mov ds,ax
+	
   	dec dword [tmrc]
   	jnz .l1
 	mov dword [tmrc],10h
 	mov eax,[tmrd+16]
 	inc dword [tmrd+16]
 	and eax,03h
-	mov eax,[tmrd+eax*4]
-	mov [0b80a0h+78*2],eax
-.l1:	mov eax,[waitpcbf]
+	mov eax,[tmrd+eax*4]	; ritar ut snurrande | i övre högra hörnet,
+	mov [0b80a0h+78*2],eax	; så man ser att datorn inte har totalhängt...
+	
+.l1	mov eax,[waitpcbf]	
 	or eax,eax
 	jz .l2
-.lw:	inc dword [eax+tsttime]
+.lw	inc dword [eax+tsttime]	; öka ttime (=total körtid) för alla
+	dec dword [eax+tssleep]	; processer i waiting-kön
 	cmp eax,[waitpcbl]
 	je .l2
 	mov eax,[eax+tsnext]
 	jmp .lw
-.l2:	
-	mov eax,[readyf]
-.lr:	inc dword [eax+tsttime]
+	
+.l2	mov eax,[readyf]	; öka ttime och minska cpriv för alla
+	cmp eax,0
+	je .l3
+.lr	inc dword [eax+tsttime]	; processer i ready-kön
 	dec dword [eax+tscpriv]
 	cmp eax,[readyl]
 	je .l3
 	mov eax,[eax+tsnext]
 	jmp .lr
-.l3:	
-	mov ebx,[readyf]
-	cmp ebx,[readyl]
+
+.l3	mov ebx,[runpcb]
+	dec dword [ebx+tscpriv]	; Minska prioritet för aktiv process
+	cmp dword [readyf],0	; Är jag ensam?
 	je near .l20.1
-.l21:	cmp dword [ebx+tscpriv],0
+	cmp dword [ebx+tscpriv],0
 	jns near .l20.2
-.l20z:	
-	mov eax,[ebx+tspriv]
-	mov edx,[ebx+tsnext]
-	mov ecx,ebx
 	
-.l5:	mov ecx,[ecx+tsnext]
+	mov ecx,[readyf]
+	cmp ecx,[readyl]
+	jne .l4
+	mov [readyf],ebx
+	mov [readyl],ebx
+	mov [ebx+tsprev],ebx
+	mov [ebx+tsnext],ebx
+	jmp .l12
+	
+.l4	mov eax,[ebx+tspriv]
+.l5	mov ecx,[ecx+tsnext]
 	cmp ecx,[readyl]
  	je .l6			; Sist
 	cmp [ecx+tscpriv],eax
 	jbe .l5
-	mov [readyf],edx	; Infoga
-	mov [edx+tsprev],edx
 	mov edx,[ecx+tsnext]
 	mov [ecx+tsnext],ebx
 	mov [edx+tsprev],ebx
 	mov [ebx+tsprev],ecx
 	mov [ebx+tsnext],edx
 	jmp .l10
-.l6:	mov [ecx+tsnext],ebx
+.l6	mov [ecx+tsnext],ebx
 	mov [readyl],ebx
 	mov [ebx+tsprev],ecx
 	mov [ebx+tsnext],ebx
-	mov [readyf],edx
-	mov [edx+tsprev],edx
-.l10:	mov ebx,[readyf]
-	mov [runpcb],ebx
-	mov eax,[ebx+tspriv]
-	mov [ebx+tscpriv],eax
-	inc dword [ebx+tstime]
-	mov eax,[ebx+tssel]
+.l10	
+	mov ecx,[readyf]
+	mov ebx,[ecx+tsnext]
+	mov [readyf],ebx
+	mov [ebx+tsprev],ebx
+	
+.l12	mov [runpcb],ecx
+	mov eax,[ecx+tspriv]
+	mov [ecx+tscpriv],eax
+	inc dword [ecx+tstime]
+	mov eax,[ecx+tssel]
 	mov [gdt+tsw+2],ax
 	mov al,20h
 	out 20h,al
@@ -132,9 +145,9 @@ irq0:	push eax
   	jmp tsw:0
 	iret
 	
-.l20.1:	mov eax,[ebx+tspriv]
+.l20.1	mov eax,[ebx+tspriv]
 	mov [ebx+tscpriv],eax
-.l20.2:	inc dword [ebx+tstime]
+.l20.2	inc dword [ebx+tstime]
 	mov al,20h
  	out 20h,al
 	pop ds
@@ -156,7 +169,7 @@ irq1:	push ds
 	je .l1
 	mov [kbdend],ebx
 	mov [kbdbuf+ebx],al
-.l1:	pop ebx
+.l1	pop ebx
 	pop eax
 	pop ds
 	iret
@@ -263,14 +276,14 @@ ehregs:	mov ax,krnlds
 	mov ds,ax
 	mov ah,0fh
 	xor ebx,ebx
-.l1:	mov al,[esi+ebx]
+.l1	mov al,[esi+ebx]
 	or al,al
 	jz .l2
 	mov [0b8000h+ebx*2],ax
 	inc ebx
 	jmp .l1
 
-.l2:
+.l2
 	mov eax,[esp+32]
 	mov edi,160
 	mov esi,eheax
@@ -327,7 +340,7 @@ ehregs:	mov ax,krnlds
 	mov edi,640+30
 	mov esi,eheip
 	call ehdword
-	mov eax,[readyf]
+	mov eax,[runpcb]
 	mov esi,ehss
 	mov edi,640+60
 	call ehdword
@@ -343,20 +356,20 @@ ehregs:	mov ax,krnlds
 		
 ehdword: mov bh,0fh
 	mov ecx,5
-.l1:	mov bl,[esi]
+.l1	mov bl,[esi]
 	mov [0b8000h+edi],bx
 	add edi,2
 	inc esi
 	loop .l1
 	mov cl,4
-.l3:	xor ebx,ebx
+.l3	xor ebx,ebx
 	shld ebx,eax,cl
 	and bl,0fh
 	add bl,30h
 	cmp bl,39h
 	jbe .l2
 	add bl,7
-.l2:	mov bh,0fh
+.l2	mov bh,0fh
 	mov [0b8000h+edi],bx
 	add edi,2
 	add cl,4
@@ -366,10 +379,4 @@ ehdword: mov bh,0fh
 	mov [0b8000h+edi],eax
 	add edi,4
 	ret
-
-
-
-
-
-
 
