@@ -28,9 +28,9 @@ vfuncs	equ	($-vfunc)/4
 	;; 8 = Write Doubleword
 	;; 	eax = dword
 
-vidih:				; Interrupt handler för video funktioner
+vidih:				; Avbrotts hanterare för video funktioner
 	push ds
-	push dword kernds
+	push dword krnlds
 	pop ds
 	cmp bl,[vfuncs]
 	ja .l1
@@ -41,45 +41,6 @@ vidih:				; Interrupt handler för video funktioner
 .l1:	pop ds
 	iret
 
-
-video3:				; Video skal för tasks (ds dpl=3)
-	cmp bl,vfuncs
-	jb .l1
-	stc
-	ret
-.l1:	push ds
-	push dword kernds
-	pop ds
-.l2:	cmp byte [vbusy],1
-	je .l2
-	mov byte [vbusy],1
-	push ebx
-	and ebx,0ffh
-	shl ebx,2
-	call [vfunc+ebx]
-	pop ebx
-	mov byte [vbusy],0
-	pop ds
-	clc
-	retf
-
-video0:				; Video skal för kernel (ds dpl=0)
-	cmp bl,vfuncs
-	jb .l1
-	stc
-	ret
-.l1:	cmp byte [vbusy],1
-	je .l1
-	mov byte [vbusy],1
-	push ebx
-	and ebx,0ffh
-	shl ebx,2
-	call [vfunc+ebx]
-	pop ebx
-	mov byte [vbusy],0
-	clc
-	retf
-	
 vcls:
 	push eax
 	push ebx

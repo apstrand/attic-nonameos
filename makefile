@@ -1,13 +1,13 @@
-os:	init.asm ints.asm proc.asm video.asm kernel.asm memory.asm abs.asm os.inc
+os:	init.asm ints.asm proc.asm video.asm kernel.asm memory.asm abs.asm
 	nasm kernel.asm -o os
 
-boot:	boot.asm os.inc
+boot:	boot.asm
 	nasm boot.asm
 
-task1:	task1.asm os.inc
+task1:	task1.asm
 	nasm task1.asm
 
-task2:	task2.asm os.inc
+task2:	task2.asm
 	nasm task2.asm
 
 w:	boot os task1 task2

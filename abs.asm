@@ -30,6 +30,7 @@ tsname	resb	20h
 tsnum	resd	1
 tsrun	resd	1
 tstime	resd	1
+tsttime	resd	1
 tsvofs	resd	1
 tsvscr	resd	1
 tsvpos	resd	1
@@ -37,3 +38,9 @@ tsofs	resd	1
 tspriv	resd	1
 tscpriv	resd	1
 tssleep	resd	1
+
+
+
+
+
+

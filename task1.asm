@@ -1,5 +1,4 @@
 [bits 32]
-[include os.inc]
 [org 0h]
 	
 [section .data]

@@ -26,7 +26,7 @@ procfuncs	equ ($-procfunc)/4
 [section .text]
 
 procih:	push ds
-	push dword kernds
+	push dword krnlds
 	pop ds
 	cmp bl,[procfuncs]
 	ja .l1
@@ -66,7 +66,9 @@ inittss:
 	mov eax,tss0
 	mov [runtss],eax
 	mov [tsksel+4],eax
-	mov dword [eax+tsrun],1	
+	mov dword [eax+tsrun],1
+	mov dword [eax+tscpriv],10
+	mov dword [eax+tspriv],10
 	ret
 
 addtss:				; esi=taskptr
@@ -92,12 +94,13 @@ addtss:				; esi=taskptr
 	add edx,3
 	mov dword [ecx+tss+tscs],edi
 	mov dword [ecx+tss+tsds],edx
-	mov dword [ecx+tss+tses],d3d
-	mov dword [ecx+tss+tsfs],d3d
-	mov dword [ecx+tss+tsgs],d3d
-	mov dword [ecx+tss+tsss],d3d
-	mov dword [ecx+tss+tsss0],kernds
+	mov dword [ecx+tss+tses],edx
+	mov dword [ecx+tss+tsfs],edx
+	mov dword [ecx+tss+tsgs],edx
+	mov dword [ecx+tss+tsss],edx
+	mov dword [ecx+tss+tsss0],krnlds
 	mov dword [ecx+tss+tspriv],20
+	mov dword [ecx+tss+tscpriv],20
 	mov edi,ecx
 	shr edi,9
 	mov dword [ecx+tss+tsnum],edi
@@ -119,3 +122,6 @@ addtss:				; esi=taskptr
 	pop ebx
 	pop eax
 	ret
+
+
+

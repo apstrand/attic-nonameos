@@ -11,25 +11,21 @@
 	;;	18	stack offset
 	;;	1c	stack längd
 
-[inc os.inc]
 [section .data]
-
-
-
 		
 gdt     dw 800h
 	dd gdt
 	dw      0
+krnlcs	equ	$-gdt
 	dd	0000ffffh	; code descriptor
 	dd	00cf9a00h
+krnlds	equ	$-gdt
 	dd	0000ffffh	; data descriptor
 	dd	00cf9200h
-	dw	video0,8h	; Call gate Video dpl 0
-	dw	8c00h,0
-	dw	video3,8h	; Call gate Video dpl 3
-	dw	0ec00h,0
+tsw	equ	$-gdt
 	dw	0,t0desc	; Task Gate
 	dw	08500h,0
+t0desc	equ	$-gdt
 	dw	200h,tss0	; Task 0
 	dd	00008900h
 
@@ -46,18 +42,14 @@ idtptr	dw	07ffh
 	dd	idt
 
 lastsel dd	30h
-inkern	dd	0
+
 	
 msg1	db	'Running....',0ah,0
-msgl1	db	'Loading task 1...',0ah,0
-msgr1	db	'Running task 1...',0ah,0
-msgl2	db	'Loading task 2...',0ah,0
-msgr2	db	'Running task 2...',0ah,0
 
 
 [section .text]
 start:	
-	mov ax,kernds
+	mov ax,krnlds
 	mov ds,ax
 	mov es,ax
 	mov fs,ax
@@ -120,6 +112,7 @@ start:
 	mov eax,[eax+tstime]
 	mov bl,8
 	int 42h
+
 	jmp .l1
 	jmp $
 

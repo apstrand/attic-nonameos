@@ -27,7 +27,7 @@ memory:
 	stc
 	retf
 .ok:	push ds
-	push dword kernds
+	push dword krnlds
 	pop ds
 .l1	cmp byte [membusy],1
 	je .l1
