@@ -2,23 +2,72 @@
 
 vcurpos:	dd	0
 vcurofs:	dd	0
-		
-[section .text]
 
+vbusy:	db	0
+	
+vfunc:	dd vcls,vsetpos,vgetpos,vgetrpos,vputchar,vwstr,vbyte,vword,vdword
+vfuncs	equ	($-vfunc)/4
+					
+[section .text]
+	
+	;; Video routines
+	;; bl = function
+	;; 0 = Clear Screen
+	;; 1 = Set cursorposition
+	;; 	ax = RRCC
+	;; 2 = Get cursorposition
+	;; 	ax = RRCC
+	;; 3 = Get real cursorposition
+	;; 	ax = RRCC
+	;; 4 = Put char
+	;; 	al = char
+	;; 5 = Write ASCIIZ string
+	;; 	esi = string
+	;; 6 = Write Byte
+	;; 	al = byte
+	;; 7 = Write Word
+	;; 	ax = word
+	;; 8 = Write Doubleword
+	;; 	eax = dword
+	
+video:	cmp bl,vfuncs
+	jb .l1
+	stc
+	ret
+.l1:	cmp byte [vbusy],1
+	je .l1
+	mov byte [vbusy],1
+	push ebx
+	and ebx,0ffh
+	shl ebx,2
+	call [vfunc+ebx]
+	pop ebx
+	mov byte [vbusy],0
+	clc
+	retf
+	
 vcls:
 	push eax
+	push ebx
+	push edx
+	mov eax,[runtss]
+	mov ebx,[eax+tsvscr]
 	mov eax,80*25*2
+	add ebx,0b8000h
 .l1:	sub eax,4
-	mov dword [0b8000h+eax],07200720h
+	mov dword [ebx+eax],07200720h
 	jnz .l1
 	xor eax,eax
-	mov [vcurpos],eax
-	mov [vcurofs],eax
+	mov ebx,[runtss]
+	mov [ebx+tsvpos],eax
+	mov [ebx+tsvofs],eax
 	mov dx,3d4h
 	mov ax,0dh
 	out dx,ax
 	mov ax,0eh
 	out dx,ax
+	pop edx
+	pop ebx
 	pop eax
 	ret
 
@@ -26,7 +75,8 @@ vsetpos:			; ax = RRCC
 	push eax
 	push ebx
 	push edx
-	mov [vcurpos],ax
+	mov ebx,[runtss]
+	mov [ebx+tsvpos],ax
 	xor ebx,ebx
 	mov bl,ah
 	and eax,0ffh
@@ -41,7 +91,8 @@ vsetpos:			; ax = RRCC
 	mov al,0fh
 	out dx,ax
 	shl ebx,1
-	mov [vcurofs],ebx
+	mov eax,[runtss]
+	mov [eax+tsvofs],ebx
 	pop edx
 	pop ebx
 	pop eax
@@ -49,7 +100,8 @@ vsetpos:			; ax = RRCC
 
 	
 vgetpos:
-	mov ax,[vcurpos]
+	mov eax,[runtss]
+	mov eax,[eax+tsvpos]
 	ret
 
 vgetrpos:			; returnerar:	ax = RRCC
@@ -68,19 +120,27 @@ vgetrpos:			; returnerar:	ax = RRCC
 	in al,dx
 	mov ah,bh
 	shl ax,1
-	mov [vcurofs],ax
+	mov ebx,[runtss]
+	mov [ebx+tsvofs],ax
 	shr ax,1
 	mov cl,80
 	div cl
 	xchg ah,al
-	mov [vcurpos],ax
+	mov [ebx+tsvpos],ax
 	pop edx
 	pop ebx
 	ret
 	
 vputchar:			; tecken i al
 	push eax
-	cmp al,0ah
+	cmp al,8
+	jne .l1
+	call vgetpos
+	dec al
+	call vsetpos
+	pop eax
+	ret
+.l1:	cmp al,0ah
 	jne .l2
 	call vgetpos
 	xor al,al
@@ -89,12 +149,16 @@ vputchar:			; tecken i al
 	pop eax
 	ret
 .l2:	push ebx
-	mov ebx,[vcurofs]
+	push ecx
+	mov ecx,[runtss]
+	mov ebx,[ecx+tsvofs]
+	add ebx,[ecx+tsvscr]
 	mov ah,07h
 	mov [0b8000h+ebx],ax
 	call vgetpos
 	inc al
 	call vsetpos
+	pop ecx
 	pop ebx
 	pop eax
 	ret
@@ -141,11 +205,3 @@ vdword:
 	ror eax,16
 	call vword
 	ret
-	
-
-
-
-
-
-
-

@@ -1,21 +1,5 @@
 [bits 32]
 [section .data]
-tcs	equ	4ch
-tds	equ	54h
-tes	equ	48h
-tfs	equ	58h
-tgs	equ	5ch
-tss	equ	50h
-teip	equ	20h
-tesp	equ	38h
-tsss0	equ	8h
-tesp0	equ	4h
-tsss1	equ	10h
-tesp1	equ	0ch
-tsss2	equ	18h
-tesp2	equ	14h
-tldt	equ	60h
-tflags	equ	24h
 	
 t0stk	equ	21000h
 t1stk	equ	22000h
@@ -27,10 +11,9 @@ t1desc	equ	20h
 t2desc	equ	28h
 c3d	equ	33h
 d3d	equ	3bh
-	
-mintss	equ	18h
-maxtss	equ	20h
-	
+c0dc	equ	4bh
+vid0	equ	48h
+vid3	equ	53h	
 				
 gdt:	dw	800h
 	dd	gdt
@@ -40,15 +23,21 @@ gdt:	dw	800h
 	dd	0000ffffh	; 10h data descriptor
 	dd	00cf9200h
 	dw	200h,tss0	; 18h Task 0
-	dw	8900h,0
-	dw	200h,tss1	; 20h Task 1
-	dw	8900h,0
-	dw	200h,tss2	; 28h Task 2
-	dw	8900h,0
+	dd	00008900h
+	dd	00000200h	; 20h Task 1
+	dd	00008900h
+	dd	00000200h	; 28h Task 2
+	dd	00008900h
 	dd	0000ffffh	; 30h cpl3 code descriptor
 	dd	00cffa00h
 	dd	0000ffffh	; 38h cpl3 data descriptor
 	dd	00cff200h
+	dd	0000ffffh	; 40h Conforming Code descriptor
+	dd	00cf9e00h
+	dw	video,8h	; 48h Call gate Video cpl 0
+	dw	8c00h,0
+	dw	video,43h	; 50h Call gate Video cpl 3
+	dw	0ec00h,0
 
 	times 800h-$+gdt db 0
 idt:	times 100h dw dummyh,8,8e00h,0
@@ -57,16 +46,15 @@ idt:	times 100h dw dummyh,8,8e00h,0
 idtptr:	dw	07ffh
 	dd	idt
 	
-tssptr:	dd	0
-	dw	18h
-	
-tss0:	times 200h db 0
-tss1:	times 200h db 0
-tss2:	times 200h db 0
 
 msg0	db	'Initiating....',0ah,0
 msg1	db	'Running....',0ah,0
-
+msgl1	db	'Loading task 1...',0ah,0
+msgr1	db	'Running task 1...',0ah,0
+msgl2	db	'Loading task 2...',0ah,0
+msgr2	db	'Running task 2...',0ah,0
+	
+	
 [section .text]
 start:	
 	mov ax,d0d
@@ -76,81 +64,57 @@ start:
 	mov gs,ax
 	mov ss,ax
 	mov esp,10000h
-	call vcls
-	mov esi,msg0
-	call vwstr
-	call enableA20
+	
+	call enableA20		
+	;; 	call getmems
 	call init8259
- 	call init8253
-   	call initIDT
-	call inittss
-	lidt [idtptr]
-	sti
+	call init8253
+    	call initIDT
+  	call inittss
+ 	lidt [idtptr]
+  	sti
+	mov bl,0
+	call vid0:0
 	mov esi,msg1
-	call vwstr
-  	jmp far [tssptr]
+	mov bl,5
+	call vid0:0
+	mov esi,msgl1
+	mov bl,5
+	call vid0:0
+	mov esi,task1
+ 	call loadtask
+ 	mov esi,msgr1
+ 	mov bl,5
+ 	call vid0:0
+ 	call runtask	
+ 	mov esi,msgl2
+ 	mov bl,5
+ 	call vid0:0
+ 	mov esi,task2
+	call loadtask
+ 	mov esi,msgr2
+ 	mov bl,5
+ 	call vid0:0
+ 	call runtask
 	jmp $
 
-task0:	mov eax,70307030h
-	mov edx,07200720h
-	xor ebx,ebx
-.l1:	mov [0b8000h+20*160+ebx],edx
-	add ebx,4
-	cmp ebx,160
-	jb .l2
-	xor ebx,ebx
-.l2:	mov [0b8000h+20*160+ebx],eax
-	mov ecx,100000h
-	loop $
+
+getmems:
+	mov ebx,100000h	
+	mov al,0a5h
+.l1:	mov [ebx],al
+	mov cl,[ebx]
+	cmp cl,al
+	jne .l2
+	inc ebx
 	jmp .l1
-
-task1:	mov eax,07310731h
-	mov edx,07200720h
-	xor ebx,ebx
-.l1:	mov [0b8000h+21*160+ebx],edx
-	add ebx,4
-	cmp ebx,160
-	jb .l2
-	xor ebx,ebx
-.l2:	mov [0b8000h+21*160+ebx],eax
-	mov ecx,100000h
-	loop $
-	jmp .l1
-
-inittss:
-	mov ax,10h
-	mov dword [tss0+teip],task0
-	mov dword [tss0+tesp],t0stk
-	mov dword [tss0+tesp0],t0stk+2000h
-	mov dword [tss0+tflags],202h
-	mov dword [tss0+tcs],c0d
-	mov dword [tss0+tds],d0d
-	mov dword [tss0+tes],d0d
-	mov dword [tss0+tfs],d0d
-	mov dword [tss0+tgs],d0d
-	mov dword [tss0+tss],d0d
-	mov dword [tss0+tsss0],d0d
-	mov dword [tss0+tldt],0
-	mov dword [tss1+tesp],t1stk
-	mov dword [tss1+teip],task1
-	mov dword [tss1+tesp0],t1stk+2000h
-	mov dword [tss1+tflags],202h
-	mov dword [tss1+tcs],c3d
-	mov dword [tss1+tds],d3d
-	mov dword [tss1+tes],d3d
-	mov dword [tss1+tfs],d3d
-	mov dword [tss1+tgs],d3d
-	mov dword [tss1+tss],d3d
-	mov dword [tss1+tsss0],d0d
-	mov dword [tss1+tldt],0
-
-	mov ax,t2desc
-	ltr ax
-	mov word [tssptr+4],t0desc
+.l2:	mov eax,ebx
+	mov bl,8
+	call vid0:0
 	ret
 	
 initIDT:	
-	mov edx,exp0
+	mov edx,exp0		; Exception handlers på int 0 till 20h
 	mov [idt+0*8],dx
 	mov edx,exp1
 	mov [idt+1*8],dx
@@ -185,7 +149,7 @@ initIDT:
 	mov edx,exp16
 	mov [idt+16*8],dx
 	mov edx,irq0
-	mov [idt+20h*8],dx
+  	mov [idt+20h*8],dx	
 	ret
 
 
@@ -196,7 +160,7 @@ init8253:			; Timeravbrott
 	out 40h,al
 	mov al,2eh
 	out 40h,al
- 	in al,21h		; irq 0 på!
+ 	in al,21h		; irq 0 på
  	and al,11111110b
  	out 21h,al
 	ret	
@@ -243,8 +207,6 @@ enableA20:
 	call    empty8042
 	ret
 
-
-
 		
 empty8042:	
 	call    delay
@@ -254,9 +216,7 @@ empty8042:
 	call    delay
 	in      al,60h
 	jmp     empty8042
-
-noout:
-	test    al,2
+noout:	test    al,2
 	jnz     empty8042
 	ret
 
@@ -265,8 +225,11 @@ delay:
 	jmp .l1
 .l1:	ret
 
+[inc job.asm]
 [inc video.asm]
 [inc ints.asm]
-
+[inc kbd.asm]
+	
 [section .text]
-	times 1000h-$+start db 0
+	times 1000h-$+start db 0	; Koden börjar på 8:1000h
+
