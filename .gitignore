@@ -1,0 +1,14 @@
+\#*
+*.sw?
+*~
+boot
+init
+monitor
+kernel
+task1
+task2
+os
+t1
+t2
+*.img
+*.lst
